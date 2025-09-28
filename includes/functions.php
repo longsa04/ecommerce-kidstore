@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Shared helper functions for the Kid Store project.
  */
