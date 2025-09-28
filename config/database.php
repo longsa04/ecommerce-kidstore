@@ -4,13 +4,26 @@
  */
 declare(strict_types=1);
 
+require_once __DIR__ . '/env.php';
+
 if (!defined('KIDSTORE_DB_SETTINGS')) {
+    $host = kidstore_env('KIDSTORE_DB_HOST');
+    $portValue = kidstore_env('KIDSTORE_DB_PORT');
+    $dbName = kidstore_env('KIDSTORE_DB_NAME');
+    $user = kidstore_env('KIDSTORE_DB_USER');
+    $password = kidstore_env('KIDSTORE_DB_PASS');
+
+    $port = filter_var($portValue, FILTER_VALIDATE_INT);
+    if ($port === false || $port <= 0) {
+        throw new RuntimeException('KIDSTORE_DB_PORT must be a positive integer.');
+    }
+
     define('KIDSTORE_DB_SETTINGS', [
-        'host' => getenv('KIDSTORE_DB_HOST') ?: '127.0.0.1',
-        'port' => (int) (getenv('KIDSTORE_DB_PORT') ?: 3306),
-        'name' => getenv('KIDSTORE_DB_NAME') ?: 'kidstore',
-        'user' => getenv('KIDSTORE_DB_USER') ?: 'root',
-        'pass' => getenv('KIDSTORE_DB_PASS') ?: '**Admin@123',
+        'host' => $host,
+        'port' => $port,
+        'name' => $dbName,
+        'user' => $user,
+        'pass' => $password,
         'charset' => 'utf8mb4',
     ]);
 }
