@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../includes/cart_functions.php';
 require_once __DIR__ . '/../../includes/functions.php';
 
@@ -11,6 +12,13 @@ try {
 } catch (Throwable $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Invalid request body']);
+    exit;
+}
+
+$csrfToken = kidstore_frontend_extract_request_csrf_token();
+if (!kidstore_frontend_csrf_validate($csrfToken)) {
+    http_response_code(419);
+    echo json_encode(['success' => false, 'message' => 'Security token mismatch. Please refresh and try again.']);
     exit;
 }
 

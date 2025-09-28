@@ -12,6 +12,7 @@ $cartTotal = getCartTotal();
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="kidstore-csrf-token" content="<?= htmlspecialchars(kidstore_frontend_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>" />
     <title>Your Cart - Little Stars</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
     <link href="<?php echo $prefix; ?>assets/styles.css" rel="stylesheet" />
@@ -243,6 +244,17 @@ $cartTotal = getCartTotal();
         const updateBadge = typeof window.kidstoreUpdateCartBadge === 'function'
             ? window.kidstoreUpdateCartBadge
             : () => {};
+        const buildJsonHeaders = typeof window.kidstoreBuildJsonHeaders === 'function'
+            ? window.kidstoreBuildJsonHeaders
+            : function () {
+                const headers = { 'Content-Type': 'application/json' };
+                const token = window.KIDSTORE_CSRF_TOKEN;
+                if (token) {
+                    const headerName = window.KIDSTORE_CSRF_HEADER || 'X-Kidstore-CSRF';
+                    headers[headerName] = token;
+                }
+                return headers;
+            };
 
         function syncTotals(data) {
             if (typeof data.cartTotal === 'number') {
@@ -266,7 +278,7 @@ $cartTotal = getCartTotal();
                 }
                 fetch('<?php echo $prefix; ?>actions/update_cart.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: buildJsonHeaders(),
                     body: JSON.stringify({ action: 'update', productId, quantity })
                 })
                     .then(response => response.json())
@@ -296,7 +308,7 @@ $cartTotal = getCartTotal();
             button.addEventListener('click', () => {
                 fetch('<?php echo $prefix; ?>actions/update_cart.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: buildJsonHeaders(),
                     body: JSON.stringify({ action: 'remove', productId })
                 })
                     .then(response => response.json())
@@ -321,7 +333,7 @@ $cartTotal = getCartTotal();
             clearCartBtn.addEventListener('click', () => {
                 fetch('<?php echo $prefix; ?>actions/update_cart.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: buildJsonHeaders(),
                     body: JSON.stringify({ action: 'clear' })
                 })
                     .then(response => response.json())

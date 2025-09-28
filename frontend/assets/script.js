@@ -7,6 +7,16 @@
         return el;
     }
 
+    function buildJsonHeaders() {
+        const headers = { 'Content-Type': 'application/json' };
+        const token = window.KIDSTORE_CSRF_TOKEN;
+        if (token) {
+            const headerName = window.KIDSTORE_CSRF_HEADER || 'X-Kidstore-CSRF';
+            headers[headerName] = token;
+        }
+        return headers;
+    }
+
     function showNotification(message, isError) {
         const el = getNotificationElement();
         if (!el) {
@@ -56,7 +66,7 @@
             const basePath = window.KIDSTORE_FRONT_PREFIX || '';
             fetch(`${basePath}actions/add_to_cart.php`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: buildJsonHeaders(),
                 body: JSON.stringify({ productId: parseInt(productId, 10), quantity: 1 })
             })
                 .then((response) => response.json())
@@ -110,4 +120,5 @@
     window.kidstoreShowNotification = showNotification;
     window.kidstoreUpdateCartBadge = updateCartBadge;
     window.kidstoreSetupAddToCartButtons = setupAddToCartButtons;
+    window.kidstoreBuildJsonHeaders = buildJsonHeaders;
 })();

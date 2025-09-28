@@ -328,7 +328,9 @@ if (defined('KIDSTORE_FRONT_URL_PREFIX')) {
 </style>
 
 <script>
-window.KIDSTORE_FRONT_PREFIX = '<?php echo $prefix; ?>';
+window.KIDSTORE_FRONT_PREFIX = <?php echo json_encode($prefix, JSON_UNESCAPED_SLASHES); ?>;
+window.KIDSTORE_CSRF_TOKEN = <?php echo json_encode(kidstore_frontend_csrf_token(), JSON_UNESCAPED_SLASHES); ?>;
+window.KIDSTORE_CSRF_HEADER = <?php echo json_encode(KIDSTORE_FRONTEND_CSRF_HEADER, JSON_UNESCAPED_SLASHES); ?>;
 function toggleSearch() {
     const searchBar = document.getElementById('search-bar');
     searchBar.classList.toggle('active');
