@@ -20,6 +20,7 @@ if ($status !== '') {
 $products = kidstore_admin_fetch_products($filters);
 $flash = $_SESSION['admin_flash'] ?? null;
 unset($_SESSION['admin_flash']);
+$csrfToken = kidstore_csrf_token();
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -71,7 +72,11 @@ include __DIR__ . '/../includes/header.php';
                         </td>
                         <td style="display:flex;gap:10px;">
                             <a href="product_form.php?id=<?= (int) $product['product_id'] ?>" class="button secondary" style="padding:6px 12px;">Edit</a>
-                            <a href="<?php echo $prefix; ?>pages/product_delete.php?id=<?= (int) $product['product_id'] ?>" class="button danger" style="padding:6px 12px;" data-confirm="Archive this product?">Archive</a>
+                            <form method="post" action="<?php echo $prefix; ?>pages/product_delete.php" data-confirm="Archive this product?" style="margin:0;">
+                                <input type="hidden" name="product_id" value="<?= (int) $product['product_id'] ?>" />
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>" />
+                                <button type="submit" class="button danger" style="padding:6px 12px;">Archive</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>

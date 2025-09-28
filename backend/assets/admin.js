@@ -1,10 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-confirm]').forEach(button => {
-        button.addEventListener('click', event => {
-            const message = button.getAttribute('data-confirm') || 'Are you sure?';
-            if (!confirm(message)) {
-                event.preventDefault();
-            }
-        });
+    document.querySelectorAll('[data-confirm]').forEach(element => {
+        const message = element.getAttribute('data-confirm') || 'Are you sure?';
+
+        if (element.tagName === 'FORM') {
+            element.addEventListener('submit', event => {
+                if (!confirm(message)) {
+                    event.preventDefault();
+                }
+            });
+        } else {
+            element.addEventListener('click', event => {
+                if (!confirm(message)) {
+                    event.preventDefault();
+                }
+            });
+        }
     });
 });
