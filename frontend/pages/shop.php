@@ -64,6 +64,62 @@ $availabilityOptions = [
     'out_of_stock' => 'Out of Stock',
 ];
 
+$categoryDisplayMap = [];
+foreach ($categories as $category) {
+    $categoryDisplayMap[(string) $category['category_id']] = $category['category_name'];
+}
+
+$activeFilters = [];
+if ($activeCategory) {
+    $activeFilters[] = [
+        'key' => 'category',
+        'label' => 'Category',
+        'value' => $activeCategory['category_name'],
+        'remove' => ['category' => null, 'page' => 1],
+    ];
+}
+if ($availability !== '' && isset($availabilityOptions[$availability])) {
+    $activeFilters[] = [
+        'key' => 'availability',
+        'label' => 'Availability',
+        'value' => $availabilityOptions[$availability],
+        'remove' => ['availability' => null, 'page' => 1],
+    ];
+}
+if ($searchTerm !== '') {
+    $activeFilters[] = [
+        'key' => 'search',
+        'label' => 'Search',
+        'value' => $searchTerm,
+        'remove' => ['search' => null, 'page' => 1],
+    ];
+}
+
+$defaultSubtitle = 'Choose from curated outfits and essentials made for giggles, play, and special memories.';
+$heroTitle = $activeCategory['category_name'] ?? 'Shop Our Collection';
+$heroSubtitle = $defaultSubtitle;
+if ($searchTerm !== '') {
+    $heroSubtitle = sprintf('Showing results for “%s”.', $searchTerm);
+} elseif ($activeCategory) {
+    $heroSubtitle = sprintf('Curated picks from the %s collection.', $activeCategory['category_name']);
+} elseif ($availability === 'in_stock') {
+    $heroSubtitle = 'Everything here is in stock and ready for adventures right away.';
+} elseif ($availability === 'out_of_stock') {
+    $heroSubtitle = 'These favorites are currently on our restock radar—check back soon!';
+}
+
+$shopConfig = [
+    'categories' => $categoryDisplayMap,
+    'availabilityLabels' => $availabilityOptions,
+    'copy' => [
+        'default' => $defaultSubtitle,
+        'in_stock' => 'Everything here is in stock and ready for adventures right away.',
+        'out_of_stock' => 'These favorites are currently on our restock radar—check back soon!',
+    ],
+];
+
+$hasProducts = !empty($products);
+
 function kidstore_query_params(array $overrides = []): string
 {
     $params = array_merge($_GET, $overrides);
@@ -80,240 +136,48 @@ function kidstore_query_params(array $overrides = []): string
     <title>Shop - Little Stars</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
     <link href="<?php echo $prefix; ?>assets/styles.css" rel="stylesheet" />
-    <style>
-        .shop-hero {
-            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
-            color: #333;
-            padding: 80px 0;
-            text-align: center;
-        }
-        .shop-hero h1 {
-            font-size: 2.8rem;
-            margin-bottom: 10px;
-        }
-        .shop-hero p {
-            font-size: 1.1rem;
-            max-width: 640px;
-            margin: 0 auto;
-        }
-        .shop-content {
-            padding: 60px 0;
-        }
-        .shop-layout {
-            display: grid;
-            grid-template-columns: 260px 1fr;
-            gap: 30px;
-        }
-        .shop-sidebar {
-            background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            padding: 25px;
-            height: fit-content;
-            position: sticky;
-            top: 120px;
-        }
-        .filter-section + .filter-section {
-            margin-top: 30px;
-        }
-        .filter-section h3 {
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-            color: #333;
-        }
-        .filter-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: grid;
-            gap: 12px;
-        }
-        .filter-list a {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            text-decoration: none;
-            color: #444;
-            padding: 10px 14px;
-            border-radius: 12px;
-            transition: background 0.2s ease, transform 0.2s ease;
-        }
-        .filter-list a.active,
-        .filter-list a:hover {
-            background: rgba(102, 126, 234, 0.12);
-            color: #312e81;
-            transform: translateX(4px);
-        }
-        .shop-products {
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-        }
-        .shop-controls {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-        }
-        .shop-controls form {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .shop-controls input[type="search"],
-        .shop-controls select {
-            padding: 10px 14px;
-            border-radius: 12px;
-            border: 1px solid #ddd;
-            font-size: 0.95rem;
-        }
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 25px;
-        }
-        .product-card {
-            background: #fff;
-            border-radius: 18px;
-            overflow: hidden;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
-            text-align: center;
-            position: relative;
-        }
-        .product-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
-        }
-        .product-card img {
-            width: 100%;
-            height: 240px;
-            object-fit: cover;
-        }
-        .product-card h3 {
-            font-size: 1.2rem;
-            margin: 18px 18px 8px;
-        }
-        .product-thumb {
-            display: block;
-        }
-        .product-card h3 a {
-            text-decoration: none;
-            color: inherit;
-        }
-        .product-card h3 a:hover {
-            color: #6366f1;
-        }
-        .product-card p {
-            margin: 0 18px 20px;
-            color: #555;
-            font-size: 0.95rem;
-            min-height: 48px;
-        }
-        .product-card .price {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: #2196f3;
-            margin-bottom: 15px;
-        }
-        .product-meta {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            font-size: 0.85rem;
-            color: #777;
-            margin-bottom: 15px;
-        }
-        .add-to-cart {
-            margin-bottom: 20px;
-        }
-        .badge {
-            position: absolute;
-            top: 16px;
-            left: 16px;
-            background: rgba(0, 0, 0, 0.65);
-            color: #fff;
-            padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .badge.out-of-stock {
-            background: rgba(244, 67, 54, 0.85);
-        }
-        .pagination {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 15px;
-        }
-        .pagination a,
-        .pagination span {
-            padding: 8px 14px;
-            border-radius: 10px;
-            border: 1px solid #ddd;
-            text-decoration: none;
-            color: #333;
-            font-size: 0.95rem;
-        }
-        .pagination .current {
-            background: #667eea;
-            color: #fff;
-            border-color: #667eea;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-        }
-        .empty-state h3 {
-            font-size: 1.5rem;
-            margin-bottom: 10px;
-        }
-        .empty-state p {
-            color: #666;
-        }
-        @media (max-width: 1024px) {
-            .shop-layout {
-                grid-template-columns: 1fr;
-            }
-            .shop-sidebar {
-                position: static;
-            }
-        }
-    </style>
+    <link href="<?php echo $prefix; ?>assets/shop.css" rel="stylesheet" />
 </head>
-<body>
+<body class="shop-page">
 <?php include __DIR__ . '/../partials/header.php'; ?>
 <main>
     <section class="shop-hero">
         <div class="container">
-            <h1><?= htmlspecialchars($activeCategory['category_name'] ?? 'Shop Our Collection') ?></h1>
-            <p>
-                <?= $searchTerm !== ''
-                    ? 'Showing results for ?' . htmlspecialchars($searchTerm) . '?.'
-                    : 'Choose from curated outfits and essentials made for giggles, play, and special memories.'
-                ?>
-            </p>
+            <nav class="shop-breadcrumb" aria-label="Breadcrumb">
+                <a href="<?php echo $prefix; ?>index.php">Home</a>
+                <span>/</span>
+                <span>Shop</span>
+                <?php if ($activeCategory): ?>
+                    <span>/</span>
+                    <span><?= htmlspecialchars($activeCategory['category_name']) ?></span>
+                <?php endif; ?>
+            </nav>
+            <h1 data-hero-title><?= htmlspecialchars($heroTitle) ?></h1>
+            <p class="shop-hero__subtitle" data-hero-subtitle><?= htmlspecialchars($heroSubtitle) ?></p>
         </div>
     </section>
 
     <section class="shop-content">
         <div class="container">
-            <div class="shop-layout">
+            <div class="shop-layout" data-shop-root
+                 data-search-endpoint="<?= htmlspecialchars($prefix . 'actions/search_products.php') ?>"
+                 data-product-url="<?= htmlspecialchars($prefix . 'pages/product.php') ?>"
+                 data-page-url="<?= htmlspecialchars($prefix . 'pages/shop.php') ?>"
+                 data-current-page="<?= (int) $page ?>"
+                 data-total-pages="<?= (int) $totalPages ?>"
+                 data-total-products="<?= (int) $totalProducts ?>">
                 <aside class="shop-sidebar">
                     <div class="filter-section">
                         <h3>Categories</h3>
                         <ul class="filter-list">
-                            <li><a href="shop.php" class="<?= $categoryId === null ? 'active' : '' ?>">All Categories</a></li>
+                            <li><a href="shop.php" class="<?= $categoryId === null ? 'active' : '' ?>" data-filter-link data-filter-type="category" data-filter-value="">All Categories</a></li>
                             <?php foreach ($categories as $category): ?>
                                 <li>
                                     <a href="shop.php?<?= htmlspecialchars(kidstore_query_params(['category' => $category['category_id'], 'page' => 1])) ?>"
-                                       class="<?= ((int) $category['category_id'] === $categoryId) ? 'active' : '' ?>">
+                                       class="<?= ((int) $category['category_id'] === $categoryId) ? 'active' : '' ?>"
+                                       data-filter-link
+                                       data-filter-type="category"
+                                       data-filter-value="<?= (int) $category['category_id'] ?>">
                                         <?= htmlspecialchars($category['category_name']) ?>
                                     </a>
                                 </li>
@@ -326,7 +190,10 @@ function kidstore_query_params(array $overrides = []): string
                             <?php foreach ($availabilityOptions as $value => $label): ?>
                                 <li>
                                     <a href="shop.php?<?= htmlspecialchars(kidstore_query_params(['availability' => $value, 'page' => 1])) ?>"
-                                       class="<?= $availability === $value ? 'active' : '' ?>">
+                                       class="<?= $availability === $value ? 'active' : '' ?>"
+                                       data-filter-link
+                                       data-filter-type="availability"
+                                       data-filter-value="<?= htmlspecialchars($value) ?>">
                                         <?= htmlspecialchars($label) ?>
                                     </a>
                                 </li>
@@ -337,77 +204,115 @@ function kidstore_query_params(array $overrides = []): string
 
                 <div class="shop-products">
                     <div class="shop-controls">
-                        <form method="get" class="search-form">
-                            <?php if ($categoryId): ?>
-                                <input type="hidden" name="category" value="<?= (int) $categoryId ?>" />
+                        <div class="shop-controls__top">
+                            <form method="get" class="search-form" data-shop-form>
+                                <input type="hidden" name="category" value="<?= $categoryId !== null ? (int) $categoryId : '' ?>" data-filter-input="category" />
+                                <input type="hidden" name="availability" value="<?= htmlspecialchars($availability) ?>" data-filter-input="availability" />
+                                <input type="hidden" name="page" value="<?= (int) $page ?>" data-filter-input="page" />
+                                <input type="search" name="search" placeholder="Search for products" value="<?= htmlspecialchars($searchTerm) ?>" aria-label="Search products" data-search-input />
+                                <select name="sort" aria-label="Sort products" data-sort-select>
+                                    <?php foreach ($sortOptions as $value => $label): ?>
+                                        <option value="<?= $value ?>" <?= $sort === $value ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button type="submit" class="button solid">
+                                    <i class="fas fa-sliders-h"></i>
+                                    Apply filters
+                                </button>
+                            </form>
+                            <div class="shop-controls__actions">
+                                <p class="results-count" data-results-count aria-live="polite">
+                                    <strong><?= (int) $totalProducts ?></strong> product<?= $totalProducts === 1 ? '' : 's' ?> found
+                                </p>
+                                <a class="clear-filters" href="shop.php" data-clear-filters>
+                                    <i class="fas fa-rotate"></i>
+                                    Reset
+                                </a>
+                            </div>
+                        </div>
+                        <div class="filter-pills" data-active-filters <?= empty($activeFilters) ? 'hidden' : '' ?>>
+                            <?php foreach ($activeFilters as $filter): ?>
+                                <a class="filter-pill" href="shop.php?<?= htmlspecialchars(kidstore_query_params($filter['remove'])) ?>" data-filter-link data-filter-type="<?= htmlspecialchars($filter['key']) ?>" data-filter-value="">
+                                    <span><?= htmlspecialchars($filter['label']) ?>:</span>
+                                    <strong><?= htmlspecialchars($filter['value']) ?></strong>
+                                    <i class="fas fa-times" aria-hidden="true"></i>
+                                    <span class="sr-only">Remove <?= htmlspecialchars($filter['label']) ?> filter</span>
+                                </a>
+                            <?php endforeach; ?>
+                            <?php if (!empty($activeFilters)): ?>
+                                <a class="filter-pill filter-pill--clear" href="shop.php" data-filter-link data-filter-type="reset" data-filter-value="">
+                                    <i class="fas fa-broom"></i>
+                                    Clear all
+                                </a>
                             <?php endif; ?>
-                            <?php if ($availability !== '' && isset($availabilityOptions[$availability])): ?>
-                                <input type="hidden" name="availability" value="<?= htmlspecialchars($availability) ?>" />
-                            <?php endif; ?>
-                            <input type="search" name="search" placeholder="Search for products?" value="<?= htmlspecialchars($searchTerm) ?>" />
-                            <select name="sort">
-                                <?php foreach ($sortOptions as $value => $label): ?>
-                                    <option value="<?= $value ?>" <?= $sort === $value ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="submit" class="add-to-cart" style="padding: 10px 18px; background: #667eea;">
-                                <i class="fas fa-filter"></i>
-                                Apply
-                            </button>
-                        </form>
-                        <div class="results-count">
-                            <?= $totalProducts ?> product<?= $totalProducts === 1 ? '' : 's' ?> found
                         </div>
                     </div>
 
-                    <?php if (!empty($products)): ?>
-                        <div class="products-grid">
-                            <?php foreach ($products as $product): ?>
-                                <?php $inStock = (int) $product['stock_quantity'] > 0; ?>
-                                <div class="product-card" data-product-id="<?= (int) $product['product_id'] ?>">
-                                    <?php if (!$inStock): ?>
-                                        <span class="badge out-of-stock">Out of Stock</span>
-                                    <?php elseif (($product['category_name'] ?? '') !== ''): ?>
-                                        <span class="badge"><?= htmlspecialchars($product['category_name']) ?></span>
-                                    <?php endif; ?>
-                                    <a href="product.php?id=<?= (int) $product['product_id'] ?>" class="product-thumb">
-                                        <img src="<?= htmlspecialchars(kidstore_product_image($product['image_url'] ?? null)) ?>" alt="<?= htmlspecialchars($product['product_name']) ?>">
-                                    </a>
-                                    <h3><a href="product.php?id=<?= (int) $product['product_id'] ?>"><?= htmlspecialchars($product['product_name']) ?></a></h3>
-                                    <?php if (!empty($product['description'])): ?>
-                                        <p><?= htmlspecialchars(kidstore_truncate_text($product['description'], 140)) ?></p>
-                                    <?php else: ?>
-                                        <p>Soft, durable, and ready for every adventure.</p>
-                                    <?php endif; ?>
-                                    <div class="product-meta">
-                                        <span>$<?= kidstore_format_price((float) $product['price']) ?></span>
-                                        <span><?= $inStock ? 'In stock' : 'Sold out' ?></span>
-                                    </div>
-                                    <button class="add-to-cart" data-product-id="<?= (int) $product['product_id'] ?>" <?= $inStock ? '' : 'disabled' ?>>
-                                        <i class="fas fa-shopping-cart"></i>
-                                        <?= $inStock ? 'Add to Cart' : 'Notify Me' ?>
-                                    </button>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
+                    <div class="shop-feedback" data-feedback aria-live="polite"></div>
 
-                        <?php if ($totalPages > 1): ?>
-                            <div class="pagination">
-                                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                                    <?php if ($i === $page): ?>
-                                        <span class="current"><?= $i ?></span>
-                                    <?php else: ?>
-                                        <a href="shop.php?<?= htmlspecialchars(kidstore_query_params(['page' => $i])) ?>"><?= $i ?></a>
-                                    <?php endif; ?>
-                                <?php endfor; ?>
+                    <div class="shop-loader" data-shop-loader hidden>
+                        <?php for ($i = 0; $i < 6; $i++): ?>
+                            <div class="product-card product-card--skeleton">
+                                <div class="skeleton-block"></div>
+                                <div class="skeleton-lines">
+                                    <div class="skeleton-line full"></div>
+                                    <div class="skeleton-line medium"></div>
+                                    <div class="skeleton-line short"></div>
+                                </div>
                             </div>
+                        <?php endfor; ?>
+                    </div>
+
+                    <div class="products-grid" data-products-grid>
+                        <?php foreach ($products as $product): ?>
+                            <?php $inStock = (int) $product['stock_quantity'] > 0; ?>
+                            <article class="product-card" data-product-id="<?= (int) $product['product_id'] ?>">
+                                <?php if (!$inStock): ?>
+                                    <span class="badge out-of-stock">Out of Stock</span>
+                                <?php elseif (($product['category_name'] ?? '') !== ''): ?>
+                                    <span class="badge"><?= htmlspecialchars($product['category_name']) ?></span>
+                                <?php endif; ?>
+                                <a href="product.php?id=<?= (int) $product['product_id'] ?>" class="product-thumb" data-product-link>
+                                    <img src="<?= htmlspecialchars(kidstore_product_image($product['image_url'] ?? null)) ?>" alt="<?= htmlspecialchars($product['product_name']) ?>" loading="lazy" />
+                                </a>
+                                <h3><a href="product.php?id=<?= (int) $product['product_id'] ?>"><?= htmlspecialchars($product['product_name']) ?></a></h3>
+                                <?php if (!empty($product['description'])): ?>
+                                    <p><?= htmlspecialchars(kidstore_truncate_text($product['description'], 140)) ?></p>
+                                <?php else: ?>
+                                    <p>Soft, durable, and ready for every adventure.</p>
+                                <?php endif; ?>
+                                <div class="product-meta">
+                                    <span>$<?= kidstore_format_price((float) $product['price']) ?></span>
+                                    <span><?= $inStock ? 'In stock' : 'Sold out' ?></span>
+                                </div>
+                                <button class="add-to-cart" data-product-id="<?= (int) $product['product_id'] ?>" <?= $inStock ? '' : 'disabled' ?>>
+                                    <i class="fas fa-shopping-cart"></i>
+                                    <?= $inStock ? 'Add to Cart' : 'Notify Me' ?>
+                                </button>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div data-empty-state <?= $hasProducts ? 'hidden' : '' ?>>
+                        <h3>No products found</h3>
+                        <p>Try adjusting your filters or search to find something magical.</p>
+                    </div>
+
+                    <nav class="pagination" data-pagination aria-label="Product pagination">
+                        <?php if ($totalPages > 1): ?>
+                            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                                <?php if ($i === $page): ?>
+                                    <span class="current" aria-current="page"><?= $i ?></span>
+                                <?php else: ?>
+                                    <a href="shop.php?<?= htmlspecialchars(kidstore_query_params(['page' => $i])) ?>"
+                                       data-page-link
+                                       data-page="<?= $i ?>">
+                                        <?= $i ?>
+                                    </a>
+                                <?php endif; ?>
+                            <?php endfor; ?>
                         <?php endif; ?>
-                    <?php else: ?>
-                        <div class="empty-state">
-                            <h3>No products found</h3>
-                            <p>Try adjusting your filters or search to find something magical.</p>
-                        </div>
-                    <?php endif; ?>
+                    </nav>
                 </div>
             </div>
         </div>
@@ -416,13 +321,10 @@ function kidstore_query_params(array $overrides = []): string
 <?php include __DIR__ . '/../partials/footer.php'; ?>
 
 <div id="notification"></div>
-<script src="<?php echo $prefix; ?>assets/script.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        if (window.kidstoreSetupAddToCartButtons) {
-            window.kidstoreSetupAddToCartButtons();
-        }
-    });
+<script src="<?php echo $prefix; ?>assets/script.js" defer></script>
+<script id="shop-config" type="application/json">
+    <?= json_encode($shopConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>
 </script>
+<script src="<?php echo $prefix; ?>assets/shop.js" defer></script>
 </body>
 </html>
