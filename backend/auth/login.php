@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../includes/admin_auth.php';
+require_once __DIR__ . '/../../includes/auth_layout.php';
 
 if (kidstore_admin_logged_in()) {
     header('Location: ../index.php');
@@ -34,84 +35,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid credentials or insufficient permissions.';
     }
 }
+kidstore_auth_page_open(
+    'Admin sign in - Little Stars',
+    'Sign in to the dashboard',
+    'Use your administrator credentials to manage the Little Stars store.',
+    ['badge' => 'Admin']
+);
+
+if ($error) {
+    kidstore_auth_error($error);
+}
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Login - Kid Store</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <link rel="stylesheet" href="../assets/admin.css" />
-    <style>
-        .login-wrapper {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        }
-        .login-card {
-            background: #fff;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 15px 40px rgba(15, 23, 42, 0.2);
-            width: min(420px, 92vw);
-        }
-        .login-card h1 {
-            margin: 0 0 20px;
-            font-size: 1.8rem;
-            text-align: center;
-        }
-        .login-card form {
-            display: grid;
-            gap: 16px;
-        }
-        .login-card label {
-            font-weight: 600;
-        }
-        .login-card input {
-            padding: 12px 14px;
-            border-radius: 12px;
-            border: 1px solid #d1d5db;
-            font-size: 1rem;
-        }
-        .login-card button {
-            margin-top: 10px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            color: #fff;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .login-error {
-            background: #fee2e2;
-            color: #b91c1c;
-            padding: 10px 14px;
-            border-radius: 10px;
-            font-size: 0.95rem;
-        }
-    </style>
-</head>
-<body class="login-wrapper">
-    <div class="login-card">
-        <h1><i class="fas fa-star"></i> Kid Store Admin</h1>
-        <?php if ($error): ?>
-            <div class="login-error"><?= htmlspecialchars($error) ?></div>
-        <?php endif; ?>
-        <form method="post">
-            <div>
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" value="<?= htmlspecialchars($email) ?>" required />
-            </div>
-            <div>
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required />
-            </div>
-            <button type="submit">Sign In</button>
-        </form>
+<form method="post" class="auth-form" novalidate>
+    <div class="auth-field">
+        <label class="auth-label" for="email">Email</label>
+        <input
+            type="email"
+            class="auth-input"
+            id="email"
+            name="email"
+            value="<?= htmlspecialchars($email) ?>"
+            required
+            autocomplete="email"
+        />
     </div>
-</body>
-</html>
+    <div class="auth-field">
+        <label class="auth-label" for="password">Password</label>
+        <input
+            type="password"
+            class="auth-input"
+            id="password"
+            name="password"
+            required
+            autocomplete="current-password"
+        />
+    </div>
+    <button type="submit" class="auth-submit">Sign in</button>
+</form>
+<?php
+$meta = kidstore_auth_meta('Need to head back?', 'Return to storefront', '../../frontend/index.php');
+kidstore_auth_page_close($meta);
