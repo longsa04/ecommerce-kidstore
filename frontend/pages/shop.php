@@ -6,6 +6,43 @@ require_once __DIR__ . '/../includes/bootstrap.php';
 $prefix = KIDSTORE_FRONT_URL_PREFIX;
 $categories = kidstore_fetch_categories(true);
 
+$categoryHighlights = [];
+if (!empty($categories)) {
+    $accentThemes = [
+        ['start' => '#a5b4fc', 'end' => '#818cf8'],
+        ['start' => '#fbcfe8', 'end' => '#f472b6'],
+        ['start' => '#bfdbfe', 'end' => '#60a5fa'],
+        ['start' => '#bbf7d0', 'end' => '#34d399'],
+        ['start' => '#fde68a', 'end' => '#f59e0b'],
+    ];
+
+    foreach ($categories as $index => $category) {
+        $categoryIdValue = (int) $category['category_id'];
+        $productCount = kidstore_count_products([
+            'category_id' => $categoryIdValue,
+            'activeOnly' => true,
+        ]);
+
+        $coverProduct = kidstore_fetch_products([
+            'category_id' => $categoryIdValue,
+            'activeOnly' => true,
+            'limit' => 1,
+            'sort' => 'newest',
+        ]);
+
+        $theme = $accentThemes[$index % count($accentThemes)];
+
+        $categoryHighlights[] = [
+            'id' => $categoryIdValue,
+            'name' => $category['category_name'],
+            'description' => $category['description'] ?: 'Playful pieces curated for curious little stars.',
+            'productCount' => $productCount,
+            'image' => kidstore_product_image($coverProduct[0]['image_url'] ?? null),
+            'theme' => $theme,
+        ];
+    }
+}
+
 $categoryId = isset($_GET['category']) && $_GET['category'] !== '' ? (int) $_GET['category'] : null;
 $searchTerm = trim((string) ($_GET['search'] ?? ''));
 $sort = $_GET['sort'] ?? 'newest';
@@ -156,6 +193,43 @@ function kidstore_query_params(array $overrides = []): string
             <p class="shop-hero__subtitle" data-hero-subtitle><?= htmlspecialchars($heroSubtitle) ?></p>
         </div>
     </section>
+
+    <?php if (!empty($categoryHighlights)): ?>
+        <section class="category-spotlights" aria-label="Shop categories">
+            <div class="container">
+                <div class="spotlights-header">
+                    <h2>Shop by vibe</h2>
+                    <p>Jump straight into a collection that matches your kiddo&rsquo;s next adventure.</p>
+                </div>
+                <div class="spotlights-grid">
+                    <?php foreach ($categoryHighlights as $highlight): ?>
+                        <a href="shop.php?<?= htmlspecialchars(kidstore_query_params(['category' => $highlight['id'], 'page' => 1])) ?>"
+                           class="category-card"
+                           style="--accent-start: <?= htmlspecialchars($highlight['theme']['start']) ?>; --accent-end: <?= htmlspecialchars($highlight['theme']['end']) ?>;"
+                           data-category-card>
+                            <div class="category-card__body">
+                                <span class="category-card__eyebrow">Collection</span>
+                                <h3><?= htmlspecialchars($highlight['name']) ?></h3>
+                                <p><?= htmlspecialchars(kidstore_truncate_text($highlight['description'], 120)) ?></p>
+                            </div>
+                            <div class="category-card__footer">
+                                <span class="category-card__count">
+                                    <?= (int) $highlight['productCount'] ?> item<?= $highlight['productCount'] === 1 ? '' : 's' ?>
+                                </span>
+                                <span class="category-card__cta">
+                                    Explore
+                                    <i class="fas fa-arrow-right"></i>
+                                </span>
+                            </div>
+                            <div class="category-card__media" aria-hidden="true">
+                                <img src="<?= htmlspecialchars($highlight['image']) ?>" alt="" loading="lazy" />
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
 
     <section class="shop-content">
         <div class="container">

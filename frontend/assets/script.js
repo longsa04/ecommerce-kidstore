@@ -17,20 +17,99 @@
         return headers;
     }
 
-    function showNotification(message, isError) {
+    const PRODUCT_IMAGE_FALLBACK = 'https://images.pexels.com/photos/45982/pexels-photo-45982.jpeg?auto=compress&cs=tinysrgb&w=600';
+
+    function resolveProductImage(imageUrl) {
+        if (!imageUrl || typeof imageUrl !== 'string') {
+            return PRODUCT_IMAGE_FALLBACK;
+        }
+        const trimmed = imageUrl.trim();
+        if (trimmed === '') {
+            return PRODUCT_IMAGE_FALLBACK;
+        }
+        if (/^(?:https?:)?\/\//i.test(trimmed)) {
+            return trimmed;
+        }
+        const base = window.KIDSTORE_FRONT_PREFIX || '';
+        return `${base}${trimmed.replace(/^\/+/, '')}`;
+    }
+
+    function showNotification(messageOrOptions, maybeIsError) {
         const el = getNotificationElement();
         if (!el) {
             return;
         }
-        el.textContent = message;
-        el.style.background = isError
-            ? 'linear-gradient(135deg, #f44336, #e53935)'
-            : 'linear-gradient(135deg, #4caf50, #45a049)';
+
+        let message = '';
+        let isError = Boolean(maybeIsError);
+        let image = '';
+        let hasImageFlag = false;
+        let meta = '';
+
+        if (typeof messageOrOptions === 'object' && messageOrOptions !== null) {
+            message = messageOrOptions.message || '';
+            if (typeof messageOrOptions.isError === 'boolean') {
+                isError = messageOrOptions.isError;
+            }
+            if (Object.prototype.hasOwnProperty.call(messageOrOptions, 'image')) {
+                image = messageOrOptions.image;
+                hasImageFlag = true;
+            }
+            meta = messageOrOptions.meta || '';
+        } else {
+            message = String(messageOrOptions ?? '');
+        }
+
+        if (!message) {
+            message = isError ? 'Something went wrong.' : 'Success!';
+        }
+
+        const resolvedImage = hasImageFlag ? resolveProductImage(image) : '';
+
+        el.className = 'notification-toast';
+        if (isError) {
+            el.classList.add('notification-toast--error');
+        }
+        if (hasImageFlag) {
+            el.classList.add('notification-toast--with-image');
+        }
+
+        el.innerHTML = '';
+        if (hasImageFlag) {
+            const media = document.createElement('div');
+            media.className = 'notification-toast__media';
+            const img = document.createElement('img');
+            img.src = resolvedImage;
+            img.alt = '';
+            img.loading = 'lazy';
+            media.appendChild(img);
+            el.appendChild(media);
+        }
+
+        const body = document.createElement('div');
+        body.className = 'notification-toast__body';
+        const messageEl = document.createElement('p');
+        messageEl.className = 'notification-toast__message';
+        messageEl.textContent = message;
+        body.appendChild(messageEl);
+
+        if (meta) {
+            const metaEl = document.createElement('span');
+            metaEl.className = 'notification-toast__meta';
+            metaEl.textContent = meta;
+            body.appendChild(metaEl);
+        }
+
+        el.appendChild(body);
+
+        el.classList.remove('show');
+        // Force reflow so the animation retriggers even when the toast is shown rapidly.
+        void el.offsetWidth; // eslint-disable-line no-unused-expressions
         el.classList.add('show');
         clearTimeout(el._kidstoreTimer);
         el._kidstoreTimer = setTimeout(() => {
             el.classList.remove('show');
-        }, 2800);
+        }, 3200);
     }
 
     function updateCartBadge(count) {
@@ -73,7 +152,19 @@
                 .then((data) => {
                     if (data.success) {
                         updateCartBadge(data.cartCount || 0);
-                        showNotification(data.message || 'Added to cart', false);
+                        const product = data.product || {};
+                        const metaParts = [];
+                        if (typeof product.price === 'number') {
+                            metaParts.push(`$${product.price.toFixed(2)}`);
+                        }
+                        if (typeof data.itemQuantity === 'number' && data.itemQuantity > 0) {
+                            metaParts.push(`In cart: ${data.itemQuantity}`);
+                        }
+                        showNotification({
+                            message: data.message || 'Added to cart',
+                            image: product.image,
+                            meta: metaParts.join(' • '),
+                        });
                         button.innerHTML = '<i class="fas fa-check"></i> Added';
                         button.style.background = 'linear-gradient(135deg, #4caf50, #43a047)';
                     } else {
