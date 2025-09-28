@@ -39,11 +39,39 @@ if ($isEdit) {
     $product = array_merge($product, $existing);
 }
 
+$priceFieldValue = number_format((float) $product['price'], 2, '.', '');
+$stockFieldValue = (string) (int) $product['stock_quantity'];
+
+if (isset($_SESSION['admin_form_errors'])) {
+    $errors = (array) $_SESSION['admin_form_errors'];
+    unset($_SESSION['admin_form_errors']);
+}
+
+if (isset($_SESSION['admin_form_values'])) {
+    $formValues = $_SESSION['admin_form_values'];
+    unset($_SESSION['admin_form_values']);
+
+    if (!empty($formValues['product']) && is_array($formValues['product'])) {
+        $product = array_merge($product, $formValues['product']);
+    }
+
+    if (isset($formValues['price_field'])) {
+        $priceFieldValue = (string) $formValues['price_field'];
+    }
+    if (isset($formValues['stock_field'])) {
+        $stockFieldValue = (string) $formValues['stock_field'];
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $priceInput = $_POST['price'] ?? '';
+    $stockInput = $_POST['stock_quantity'] ?? '';
+
+    $priceFieldValue = trim((string) $priceInput);
+    $stockFieldValue = trim((string) $stockInput);
+
     $product['product_name'] = trim((string) ($_POST['product_name'] ?? ''));
     $product['description'] = trim((string) ($_POST['description'] ?? ''));
-    $product['price'] = (float) ($_POST['price'] ?? 0);
-    $product['stock_quantity'] = (int) ($_POST['stock_quantity'] ?? 0);
     $product['category_id'] = $_POST['category_id'] !== '' ? (int) $_POST['category_id'] : null;
     $product['status'] = $_POST['status'] === 'inactive' ? 'inactive' : 'active';
     $product['is_active'] = isset($_POST['is_active']) ? 1 : 0;
@@ -51,6 +79,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!kidstore_csrf_validate($_POST['csrf_token'] ?? '')) {
         $errors[] = 'Security validation failed. Please try again.';
     } else {
+        $validationErrors = kidstore_admin_collect_product_validation_errors([
+            'price' => $priceFieldValue,
+            'stock_quantity' => $stockFieldValue,
+        ]);
+
+        if (!$validationErrors) {
+            $product['price'] = (float) $priceFieldValue;
+            $product['stock_quantity'] = (int) $stockFieldValue;
+        }
+
+        $errors = array_merge($errors, $validationErrors);
+
         $imagePath = $product['image_url'];
         $file = $_FILES['image_file'] ?? null;
         if ($file && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
@@ -98,17 +138,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $product['image_path'] = $imagePath;
 
         if (!$errors) {
-            if ($isEdit) {
-                kidstore_admin_update_product($productId, $product);
-                $_SESSION['admin_flash'] = 'Product updated successfully.';
-            } else {
-                $newId = kidstore_admin_create_product($product);
-                $_SESSION['admin_flash'] = 'Product created successfully.';
-                $productId = $newId;
+            try {
+                if ($isEdit) {
+                    kidstore_admin_update_product($productId, $product);
+                    $_SESSION['admin_flash'] = 'Product updated successfully.';
+                } else {
+                    $newId = kidstore_admin_create_product($product);
+                    $_SESSION['admin_flash'] = 'Product created successfully.';
+                    $productId = $newId;
+                }
+                header('Location: ' . $prefix . 'pages/products.php');
+                exit;
+            } catch (InvalidArgumentException $exception) {
+                $errors = array_merge(
+                    $errors,
+                    array_filter(array_map('trim', explode("\n", $exception->getMessage())))
+                );
+            } catch (Throwable $exception) {
+                $errors[] = 'An unexpected error occurred while saving the product. Please try again.';
             }
-            header('Location: ' . $prefix . 'pages/products.php');
-            exit;
         }
+    }
+
+    if ($errors) {
+        $_SESSION['admin_form_errors'] = $errors;
+        $_SESSION['admin_form_values'] = [
+            'product' => [
+                'product_name' => $product['product_name'],
+                'description' => $product['description'],
+                'price' => $priceFieldValue,
+                'stock_quantity' => $stockFieldValue,
+                'category_id' => $product['category_id'],
+                'image_url' => $product['image_url'],
+                'status' => $product['status'],
+                'is_active' => $product['is_active'],
+            ],
+            'price_field' => $priceFieldValue,
+            'stock_field' => $stockFieldValue,
+        ];
+
+        $target = $prefix . 'pages/product_form.php';
+        if ($isEdit) {
+            $target .= '?id=' . $productId;
+        }
+
+        header('Location: ' . $target);
+        exit;
     }
 }
 
@@ -139,11 +214,11 @@ include __DIR__ . '/../includes/header.php';
             </div>
             <div class="form-group">
                 <label for="price">Price</label>
-                <input type="number" id="price" name="price" value="<?= number_format((float) $product['price'], 2, '.', '') ?>" step="0.01" min="0" required />
+                <input type="number" id="price" name="price" value="<?= htmlspecialchars($priceFieldValue) ?>" step="0.01" min="0" required />
             </div>
             <div class="form-group">
                 <label for="stock_quantity">Stock Quantity</label>
-                <input type="number" id="stock_quantity" name="stock_quantity" value="<?= (int) $product['stock_quantity'] ?>" min="0" required />
+                <input type="number" id="stock_quantity" name="stock_quantity" value="<?= htmlspecialchars($stockFieldValue) ?>" min="0" required />
             </div>
             <div class="form-group">
                 <label for="category_id">Category</label>

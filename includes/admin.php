@@ -1,9 +1,47 @@
-﻿<?php
+<?php
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/orders.php';
+
+const KIDSTORE_ADMIN_PRODUCT_MAX_PRICE = 100000;
+const KIDSTORE_ADMIN_PRODUCT_MAX_STOCK = 1000000;
+
+function kidstore_admin_collect_product_validation_errors(array $data): array
+{
+    $errors = [];
+
+    $priceRaw = $data['price'] ?? null;
+    if ($priceRaw === null || $priceRaw === '') {
+        $errors[] = 'Price is required.';
+    } elseif (!is_numeric($priceRaw)) {
+        $errors[] = 'Price must be a valid number.';
+    } else {
+        $price = (float) $priceRaw;
+        if ($price < 0) {
+            $errors[] = 'Price cannot be negative.';
+        } elseif ($price > KIDSTORE_ADMIN_PRODUCT_MAX_PRICE) {
+            $errors[] = 'Price cannot exceed $' . number_format((float) KIDSTORE_ADMIN_PRODUCT_MAX_PRICE, 2);
+        }
+    }
+
+    $stockRaw = $data['stock_quantity'] ?? null;
+    if ($stockRaw === null || $stockRaw === '') {
+        $errors[] = 'Stock quantity is required.';
+    } elseif (filter_var($stockRaw, FILTER_VALIDATE_INT) === false) {
+        $errors[] = 'Stock quantity must be a whole number.';
+    } else {
+        $stock = (int) $stockRaw;
+        if ($stock < 0) {
+            $errors[] = 'Stock quantity cannot be negative.';
+        } elseif ($stock > KIDSTORE_ADMIN_PRODUCT_MAX_STOCK) {
+            $errors[] = 'Stock quantity cannot exceed ' . number_format((float) KIDSTORE_ADMIN_PRODUCT_MAX_STOCK);
+        }
+    }
+
+    return $errors;
+}
 
 function kidstore_admin_fetch_products(array $filters = []): array
 {
@@ -13,6 +51,11 @@ function kidstore_admin_fetch_products(array $filters = []): array
 
 function kidstore_admin_create_product(array $data): int
 {
+    $errors = kidstore_admin_collect_product_validation_errors($data);
+    if ($errors) {
+        throw new InvalidArgumentException(implode("\n", $errors));
+    }
+
     $pdo = kidstore_get_pdo();
     $imagePath = trim((string)($data['image_path'] ?? $data['image_url'] ?? ''));
 
@@ -33,6 +76,11 @@ function kidstore_admin_create_product(array $data): int
 
 function kidstore_admin_update_product(int $productId, array $data): void
 {
+    $errors = kidstore_admin_collect_product_validation_errors($data);
+    if ($errors) {
+        throw new InvalidArgumentException(implode("\n", $errors));
+    }
+
     $pdo = kidstore_get_pdo();
     $imagePath = trim((string)($data['image_path'] ?? $data['image_url'] ?? ''));
 
