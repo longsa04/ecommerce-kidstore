@@ -6,7 +6,7 @@ require_once __DIR__ . '/../includes/admin_auth.php';
 require_once __DIR__ . '/../../includes/auth_layout.php';
 
 if (kidstore_admin_logged_in()) {
-    header('Location: ../index.php');
+    header('Location: ' . kidstore_backend_url('index.php'));
     exit;
 }
 
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user && password_verify($password, $user['password'])) {
             $_SESSION['admin_id'] = (int) $user['user_id'];
             $_SESSION['admin_name'] = $user['name'];
-            header('Location: ../index.php');
+             header('Location: ' . kidstore_backend_url('index.php'));
             exit;
         }
 
@@ -73,5 +73,5 @@ if ($error) {
     <button type="submit" class="auth-submit">Sign in</button>
 </form>
 <?php
-$meta = kidstore_auth_meta('Need to head back?', 'Return to storefront', '../../frontend/index.php');
+$meta = kidstore_auth_meta('Need to head back?', 'Return to storefront', kidstore_frontend_url('index.php'));
 kidstore_auth_page_close($meta);

@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../includes/bootstrap.php';
 require_once __DIR__ . '/../../../includes/auth_layout.php';
 
 if (kidstore_current_user()) {
-    header('Location: ../../index.php');
+    header('Location: ' . kidstore_frontend_url('index.php'));
     exit;
 }
 
@@ -16,7 +16,7 @@ $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = kidstore_register($_POST);
     if ($result['success']) {
-        header('Location: ../../index.php');
+        header('Location: ' . kidstore_frontend_url('index.php'));
         exit;
     }
     $errors = $result['errors'];

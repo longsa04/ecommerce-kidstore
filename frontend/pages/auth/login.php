@@ -6,9 +6,9 @@ require_once __DIR__ . '/../../../includes/auth_layout.php';
 
 if (kidstore_current_user()) {
     if (kidstore_is_admin()) {
-        header('Location: ../../backend/index.php');
+        header('Location: ' . kidstore_backend_url('index.php'));
     } else {
-        header('Location: ../../index.php');
+        header('Location: ' . kidstore_frontend_url('index.php'));
     }
     exit;
 }
@@ -24,9 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'We could not sign you in. Double-check your details and try again.';
     } else {
         if (kidstore_is_admin()) {
-            header('Location: ../../backend/index.php');
+            header('Location: ' . kidstore_backend_url('index.php'));
         } else {
-            header('Location: ../../index.php');
+            header('Location: ' . kidstore_frontend_url('index.php'));
         }
         exit;
     }

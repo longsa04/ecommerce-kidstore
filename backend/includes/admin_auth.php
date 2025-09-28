@@ -11,7 +11,7 @@ function kidstore_admin_logged_in(): bool
 function kidstore_admin_require_login(): void
 {
     if (!kidstore_admin_logged_in()) {
-        header('Location: ../login.php');
+        header('Location: ' . kidstore_backend_url('auth/login.php'));
         exit;
     }
 }

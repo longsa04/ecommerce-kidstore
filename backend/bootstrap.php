@@ -10,16 +10,17 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/orders.php';
 require_once __DIR__ . '/../includes/admin.php';
 if (!defined('KIDSTORE_ADMIN_URL_PREFIX')) {
-    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
-    $prefix = '';
-    if (($pos = strpos($scriptName, '/backend/')) !== false) {
-        $relative = substr($scriptName, $pos + strlen('/backend/'));
-        $depth = substr_count(trim($relative, '/'), '/');
-        if ($depth > 0) {
-            $prefix = str_repeat('../', $depth);
-        }
-    }
-    define('KIDSTORE_ADMIN_URL_PREFIX', $prefix);
+    // $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    // $prefix = '';
+    // if (($pos = strpos($scriptName, '/backend/')) !== false) {
+    //     $relative = substr($scriptName, $pos + strlen('/backend/'));
+    //     $depth = substr_count(trim($relative, '/'), '/');
+    //     if ($depth > 0) {
+    //         $prefix = str_repeat('../', $depth);
+    //     }
+    // }
+    // define('KIDSTORE_ADMIN_URL_PREFIX', $prefix);
+    define('KIDSTORE_ADMIN_URL_PREFIX', kidstore_backend_base_uri());
 }
 
 const KIDSTORE_CSRF_SESSION_KEY = 'kidstore_admin_csrf_token';

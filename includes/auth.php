@@ -4,6 +4,7 @@
  */
 declare(strict_types=1);
 
+require_once __DIR__ . '/paths.php';
 require_once __DIR__ . '/../config/database.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -108,7 +109,10 @@ function kidstore_register(array $data): array
 function kidstore_require_auth(): void
 {
     if (!kidstore_current_user()) {
-        header('Location: login.php');
+        $loginUrl = function_exists('kidstore_frontend_url')
+            ? kidstore_frontend_url('pages/auth/login.php')
+            : 'login.php';
+        header('Location: ' . $loginUrl);
         exit;
     }
 }

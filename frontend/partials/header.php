@@ -11,7 +11,9 @@ $currentUser = function_exists('kidstore_current_user') ? kidstore_current_user(
 
 if (defined('KIDSTORE_FRONT_URL_PREFIX')) {
     $prefix = KIDSTORE_FRONT_URL_PREFIX;
-} else {
+} elseif (function_exists('kidstore_frontend_base_uri')) {
+    $prefix = kidstore_frontend_base_uri();
+}  else {
     $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
     $prefix = '';
     if (($pos = strpos($scriptName, '/frontend/')) !== false) {
@@ -22,6 +24,8 @@ if (defined('KIDSTORE_FRONT_URL_PREFIX')) {
         }
     }
 }
+$adminDashboardUrl = function_exists('kidstore_backend_url') ? kidstore_backend_url('index.php') : $prefix .
+ '../backend/index.php';
 ?>
 
 
@@ -55,7 +59,7 @@ if (defined('KIDSTORE_FRONT_URL_PREFIX')) {
                         <div class="user-meta">
                             <span class="user-name">Hi, <?php echo htmlspecialchars(explode(' ', $currentUser['name'])[0]); ?></span>
                             <?php if (kidstore_is_admin()): ?>
-                                <a class="user-link" href="<?php echo $prefix; ?>../backend/index.php">Admin Dashboard</a>
+                                <a class="user-link" href="<?php echo htmlspecialchars($adminDashboardUrl); ?>">Admin Dashboard</a>
                             <?php else: ?>
                                 <span class="user-link">Member</span>
                             <?php endif; ?>
@@ -112,7 +116,7 @@ if (defined('KIDSTORE_FRONT_URL_PREFIX')) {
                 </a></li>
                 <?php if ($currentUser): ?>
                     <?php if (kidstore_is_admin()): ?>
-                        <li><a href="<?php echo $prefix; ?>../backend/index.php"><i class="fas fa-chart-line"></i> Admin</a></li>
+                        <li><a href="<?php echo htmlspecialchars($adminDashboardUrl); ?>"><i class="fas fa-chart-line"></i> Admin</a></li>
                     <?php endif; ?>
                     <li><a href="<?php echo $prefix; ?>pages/auth/logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 <?php else: ?>
