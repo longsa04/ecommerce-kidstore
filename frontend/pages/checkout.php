@@ -15,6 +15,30 @@ if (empty($items)) {
 $error = $_SESSION['checkout_error'] ?? null;
 $formData = $_SESSION['checkout_form_data'] ?? [];
 unset($_SESSION['checkout_error']);
+
+$asiaCountries = [
+    ['code' => 'SG', 'name' => 'Singapore', 'dial_code' => '+65', 'placeholder' => '+65 6123 4567', 'example' => '+65 6123 4567', 'pattern' => '^\\+65\\s?[0-9]{4}\\s?[0-9]{4}$'],
+    ['code' => 'PH', 'name' => 'Philippines', 'dial_code' => '+63', 'placeholder' => '+63 912 345 6789', 'example' => '+63 912 345 6789', 'pattern' => '^\\+63\\s?[0-9]{3}\\s?[0-9]{3}\\s?[0-9]{4}$'],
+    ['code' => 'MY', 'name' => 'Malaysia', 'dial_code' => '+60', 'placeholder' => '+60 12 345 6789', 'example' => '+60 12 345 6789', 'pattern' => '^\\+60\\s?[0-9]{1,2}[\\s-]?[0-9]{3}[\\s-]?[0-9]{4}$'],
+    ['code' => 'ID', 'name' => 'Indonesia', 'dial_code' => '+62', 'placeholder' => '+62 812 3456 7890', 'example' => '+62 812 3456 7890', 'pattern' => '^\\+62\\s?[0-9]{2,3}[\\s-]?[0-9]{3,4}[\\s-]?[0-9]{3,4}$'],
+    ['code' => 'TH', 'name' => 'Thailand', 'dial_code' => '+66', 'placeholder' => '+66 89 123 4567', 'example' => '+66 89 123 4567', 'pattern' => '^\\+66\\s?[0-9]{2}\\s?[0-9]{3}\\s?[0-9]{4}$'],
+    ['code' => 'VN', 'name' => 'Vietnam', 'dial_code' => '+84', 'placeholder' => '+84 91 234 5678', 'example' => '+84 91 234 5678', 'pattern' => '^\\+84\\s?[0-9]{2}\\s?[0-9]{3}\\s?[0-9]{4}$'],
+    ['code' => 'IN', 'name' => 'India', 'dial_code' => '+91', 'placeholder' => '+91 98765 43210', 'example' => '+91 98765 43210', 'pattern' => '^\\+91\\s?[0-9]{5}\\s?[0-9]{5}$'],
+    ['code' => 'JP', 'name' => 'Japan', 'dial_code' => '+81', 'placeholder' => '+81 90 1234 5678', 'example' => '+81 90 1234 5678', 'pattern' => '^\\+81\\s?[0-9]{2}[\\s-]?[0-9]{4}[\\s-]?[0-9]{4}$'],
+    ['code' => 'KR', 'name' => 'South Korea', 'dial_code' => '+82', 'placeholder' => '+82 10 1234 5678', 'example' => '+82 10 1234 5678', 'pattern' => '^\\+82\\s?[0-9]{2}[\\s-]?[0-9]{4}[\\s-]?[0-9]{4}$'],
+    ['code' => 'CN', 'name' => 'China', 'dial_code' => '+86', 'placeholder' => '+86 131 2345 6789', 'example' => '+86 131 2345 6789', 'pattern' => '^\\+86\\s?[0-9]{3}\\s?[0-9]{4}\\s?[0-9]{4}$'],
+    ['code' => 'HK', 'name' => 'Hong Kong', 'dial_code' => '+852', 'placeholder' => '+852 5123 4567', 'example' => '+852 5123 4567', 'pattern' => '^\\+852\\s?[0-9]{4}\\s?[0-9]{4}$'],
+    ['code' => 'TW', 'name' => 'Taiwan', 'dial_code' => '+886', 'placeholder' => '+886 912 345 678', 'example' => '+886 912 345 678', 'pattern' => '^\\+886\\s?[0-9]{3}\\s?[0-9]{3}\\s?[0-9]{3}$'],
+    ['code' => 'AE', 'name' => 'United Arab Emirates', 'dial_code' => '+971', 'placeholder' => '+971 50 123 4567', 'example' => '+971 50 123 4567', 'pattern' => '^\\+971\\s?[0-9]{2}\\s?[0-9]{3}\\s?[0-9]{4}$'],
+    ['code' => 'SA', 'name' => 'Saudi Arabia', 'dial_code' => '+966', 'placeholder' => '+966 50 123 4567', 'example' => '+966 50 123 4567', 'pattern' => '^\\+966\\s?[0-9]{2}\\s?[0-9]{3}\\s?[0-9]{4}$'],
+    ['code' => 'QA', 'name' => 'Qatar', 'dial_code' => '+974', 'placeholder' => '+974 3312 3456', 'example' => '+974 3312 3456', 'pattern' => '^\\+974\\s?[0-9]{4}\\s?[0-9]{4}$'],
+];
+
+$selectedCountry = trim((string) ($formData['country'] ?? ''));
+$validCountryNames = array_column($asiaCountries, 'name');
+if (!in_array($selectedCountry, $validCountryNames, true)) {
+    $selectedCountry = '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -146,7 +170,15 @@ unset($_SESSION['checkout_error']);
                             </div>
                             <div class="form-group">
                                 <label for="phone">Phone Number</label>
-                                <input type="tel" id="phone" name="phone" placeholder="(+1) 555-1234" value="<?= htmlspecialchars($formData['phone'] ?? '') ?>" required />
+                                <input type="tel"
+                                       id="phone"
+                                       name="phone"
+                                       placeholder="+65 6123 4567"
+                                       inputmode="tel"
+                                       pattern="^\+?[0-9\s-]{7,}$"
+                                       value="<?= htmlspecialchars($formData['phone'] ?? '') ?>"
+                                       required />
+                                <span class="form-hint" data-phone-hint></span>
                             </div>
                             <div class="form-group">
                                 <label for="address">Street Address</label>
@@ -162,7 +194,19 @@ unset($_SESSION['checkout_error']);
                             </div>
                             <div class="form-group">
                                 <label for="country">Country</label>
-                                <input type="text" id="country" name="country" placeholder="United States" value="<?= htmlspecialchars($formData['country'] ?? '') ?>" required />
+                                <select id="country" name="country" required>
+                                    <option value="" disabled <?= $selectedCountry === '' ? 'selected' : '' ?>>Select your country</option>
+                                    <?php foreach ($asiaCountries as $country): ?>
+                                        <option value="<?= htmlspecialchars($country['name']) ?>"
+                                                data-dial-code="<?= htmlspecialchars($country['dial_code']) ?>"
+                                                data-placeholder="<?= htmlspecialchars($country['placeholder']) ?>"
+                                                data-example="<?= htmlspecialchars($country['example']) ?>"
+                                                data-pattern="<?= htmlspecialchars($country['pattern']) ?>"
+                                                <?= $selectedCountry === $country['name'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($country['name']) ?> (<?= htmlspecialchars($country['dial_code']) ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label for="payment_method">Payment Method</label>
@@ -205,6 +249,64 @@ unset($_SESSION['checkout_error']);
 </main>
 <?php include __DIR__ . '/../partials/footer.php'; ?>
 <script src="<?php echo $prefix; ?>assets/script.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const countrySelect = document.getElementById('country');
+        const phoneInput = document.getElementById('phone');
+        const hint = document.querySelector('[data-phone-hint]');
+        if (!countrySelect || !phoneInput) {
+            return;
+        }
+
+        let lastDialCode = '';
+
+        function updatePhoneFormat(options) {
+            const selectedOption = countrySelect.selectedOptions[0];
+            if (!selectedOption) {
+                phoneInput.placeholder = 'Select your country first';
+                phoneInput.removeAttribute('pattern');
+                if (hint) {
+                    hint.textContent = '';
+                }
+                lastDialCode = '';
+                return;
+            }
+
+            const dial = selectedOption.getAttribute('data-dial-code') || '';
+            const placeholder = selectedOption.getAttribute('data-placeholder') || dial;
+            const example = selectedOption.getAttribute('data-example') || '';
+            const pattern = selectedOption.getAttribute('data-pattern');
+
+            if (placeholder) {
+                phoneInput.placeholder = placeholder;
+            }
+
+            if (pattern) {
+                phoneInput.setAttribute('pattern', pattern);
+            } else {
+                phoneInput.removeAttribute('pattern');
+            }
+
+            if (hint) {
+                hint.textContent = example ? `Format: ${example}` : dial ? `Dial code: ${dial}` : '';
+            }
+
+            const existingValue = phoneInput.value.trim();
+            const forceUpdate = options && options.force === true;
+            if (forceUpdate || existingValue === '' || existingValue === lastDialCode || existingValue === `${lastDialCode} `) {
+                phoneInput.value = dial ? `${dial} ` : '';
+            }
+
+            lastDialCode = dial.trim();
+        }
+
+        countrySelect.addEventListener('change', function () {
+            updatePhoneFormat({ force: true });
+        });
+
+        updatePhoneFormat();
+    });
+</script>
 </body>
 </html>
 
