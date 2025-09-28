@@ -26,6 +26,13 @@ $fields = [
     'payment_method' => trim((string) ($_POST['payment_method'] ?? 'Cash on Delivery')),
 ];
 
+if (!kidstore_frontend_csrf_validate($_POST[KIDSTORE_FRONTEND_CSRF_FIELD] ?? null)) {
+    $_SESSION['checkout_error'] = 'Your session has expired. Please refresh and try again.';
+    $_SESSION['checkout_form_data'] = $fields;
+    header('Location: ../pages/checkout.php');
+    exit;
+}
+
 if ($fields['name'] === '' || $fields['email'] === '' || !filter_var($fields['email'], FILTER_VALIDATE_EMAIL)) {
     $_SESSION['checkout_error'] = 'Please provide a valid name and email address.';
     $_SESSION['checkout_form_data'] = $fields;
