@@ -7,6 +7,7 @@ require_once __DIR__ . '/../includes/admin_auth.php';
 kidstore_admin_require_login();
 
 $prefix = KIDSTORE_ADMIN_URL_PREFIX;
+$csrfToken = kidstore_csrf_token();
 $uploadDir = dirname(__DIR__, 2) . '/frontend/assets/img';
 
 $pageTitle = 'Add Product';
@@ -47,63 +48,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $product['status'] = $_POST['status'] === 'inactive' ? 'inactive' : 'active';
     $product['is_active'] = isset($_POST['is_active']) ? 1 : 0;
 
-    $imagePath = $product['image_url'];
-    $file = $_FILES['image_file'] ?? null;
-    if ($file && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-        if ($file['error'] !== UPLOAD_ERR_OK) {
-            $errors[] = 'Unable to upload image. Please try again.';
-        } else {
-            $allowed = [
-                'image/jpeg' => 'jpg',
-                'image/png' => 'png',
-                'image/webp' => 'webp',
-            ];
-            $finfo = new finfo(FILEINFO_MIME_TYPE);
-            $mime = $finfo->file($file['tmp_name']);
-            if (!isset($allowed[$mime])) {
-                $errors[] = 'Please upload a JPG, PNG, or WEBP image.';
-            } elseif ($file['size'] > 4 * 1024 * 1024) {
-                $errors[] = 'Please upload an image smaller than 4MB.';
+    if (!kidstore_csrf_validate($_POST['csrf_token'] ?? '')) {
+        $errors[] = 'Security validation failed. Please try again.';
+    } else {
+        $imagePath = $product['image_url'];
+        $file = $_FILES['image_file'] ?? null;
+        if ($file && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                $errors[] = 'Unable to upload image. Please try again.';
             } else {
-                if (!is_dir($uploadDir) && !mkdir($uploadDir, 0777, true) && !is_dir($uploadDir)) {
-                    $errors[] = 'Unable to prepare image storage directory.';
+                $allowed = [
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/webp' => 'webp',
+                ];
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime = $finfo->file($file['tmp_name']);
+                if (!isset($allowed[$mime])) {
+                    $errors[] = 'Please upload a JPG, PNG, or WEBP image.';
+                } elseif ($file['size'] > 4 * 1024 * 1024) {
+                    $errors[] = 'Please upload an image smaller than 4MB.';
                 } else {
-                    $filename = uniqid('prod_', true) . '.' . $allowed[$mime];
-                    $destination = rtrim($uploadDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
-                    if (!move_uploaded_file($file['tmp_name'], $destination)) {
-                        $errors[] = 'Failed to move uploaded image.';
+                    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0777, true) && !is_dir($uploadDir)) {
+                        $errors[] = 'Unable to prepare image storage directory.';
                     } else {
-                        if ($isEdit && !empty($product['image_url'])) {
-                            $previous = dirname(__DIR__, 2) . '/frontend/' . ltrim($product['image_url'], '/');
-                            if (strpos($product['image_url'], 'assets/img/') === 0 && is_file($previous)) {
-                                @unlink($previous);
+                        $filename = uniqid('prod_', true) . '.' . $allowed[$mime];
+                        $destination = rtrim($uploadDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
+                        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+                            $errors[] = 'Failed to move uploaded image.';
+                        } else {
+                            if ($isEdit && !empty($product['image_url'])) {
+                                $previous = dirname(__DIR__, 2) . '/frontend/' . ltrim($product['image_url'], '/');
+                                if (strpos($product['image_url'], 'assets/img/') === 0 && is_file($previous)) {
+                                    @unlink($previous);
+                                }
                             }
+                            $imagePath = 'assets/img/' . $filename;
                         }
-                        $imagePath = 'assets/img/' . $filename;
                     }
                 }
             }
         }
-    }
 
-    if (!$isEdit && $imagePath === '') {
-        $errors[] = 'Please upload a product image.';
-    }
-
-    $product['image_url'] = $imagePath;
-    $product['image_path'] = $imagePath;
-
-    if (!$errors) {
-        if ($isEdit) {
-            kidstore_admin_update_product($productId, $product);
-            $_SESSION['admin_flash'] = 'Product updated successfully.';
-        } else {
-            $newId = kidstore_admin_create_product($product);
-            $_SESSION['admin_flash'] = 'Product created successfully.';
-            $productId = $newId;
+        if (!$isEdit && $imagePath === '') {
+            $errors[] = 'Please upload a product image.';
         }
-        header('Location: ' . $prefix . 'pages/products.php');
-        exit;
+
+        $product['image_url'] = $imagePath;
+        $product['image_path'] = $imagePath;
+
+        if (!$errors) {
+            if ($isEdit) {
+                kidstore_admin_update_product($productId, $product);
+                $_SESSION['admin_flash'] = 'Product updated successfully.';
+            } else {
+                $newId = kidstore_admin_create_product($product);
+                $_SESSION['admin_flash'] = 'Product created successfully.';
+                $productId = $newId;
+            }
+            header('Location: ' . $prefix . 'pages/products.php');
+            exit;
+        }
     }
 }
 
@@ -126,6 +131,7 @@ include __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 
     <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>" />
         <div class="form-grid">
             <div class="form-group">
                 <label for="product_name">Name</label>
