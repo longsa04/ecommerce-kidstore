@@ -7,11 +7,11 @@ declare(strict_types=1);
 require_once __DIR__ . '/env.php';
 
 if (!defined('KIDSTORE_DB_SETTINGS')) {
-    $host = kidstore_env('KIDSTORE_DB_HOST');
-    $portValue = kidstore_env('KIDSTORE_DB_PORT');
-    $dbName = kidstore_env('KIDSTORE_DB_NAME');
-    $user = kidstore_env('KIDSTORE_DB_USER');
-    $password = kidstore_env('KIDSTORE_DB_PASS');
+    $host = kidstore_env('KIDSTORE_DB_HOST', '127.0.0.1');
+    $portValue = kidstore_env('KIDSTORE_DB_PORT', '3306');
+    $dbName = kidstore_env('KIDSTORE_DB_NAME', 'kidstore');
+    $user = kidstore_env('KIDSTORE_DB_USER', 'root');
+    $password = kidstore_env('KIDSTORE_DB_PASS', '**Admin@123');
 
     $port = filter_var($portValue, FILTER_VALIDATE_INT);
     if ($port === false || $port <= 0) {
