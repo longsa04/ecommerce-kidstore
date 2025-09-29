@@ -43,6 +43,19 @@ if (!isset($payload['productId'])) {
     exit;
 }
 
+$currentUser = kidstore_current_user();
+if (!$currentUser) {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'requiresAuth' => true,
+        'message' => 'Sign in to add this item',
+        'meta' => 'Use the profile menu to log in or join.',
+        'cartCount' => getCartItemCount(),
+    ]);
+    exit;
+}
+
 $productId = (int) $payload['productId'];
 $quantity = isset($payload['quantity']) ? (int) $payload['quantity'] : 1;
 $quantity = max(1, $quantity);

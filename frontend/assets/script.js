@@ -19,7 +19,8 @@
 
   const PRODUCT_IMAGE_FALLBACK =
     "https://images.pexels.com/photos/45982/pexels-photo-45982.jpeg?auto=compress&cs=tinysrgb&w=600";
-
+  const AUTH_PROMPT_MESSAGE = "Sign in to add this item";
+  const AUTH_PROMPT_META = "Use the profile menu to log in or join.";
   function resolveProductImage(imageUrl) {
     if (!imageUrl || typeof imageUrl !== "string") {
       return PRODUCT_IMAGE_FALLBACK;
@@ -154,6 +155,15 @@
       })
         .then((response) => response.json())
         .then((data) => {
+          if (data && data.requiresAuth) {
+            showNotification({
+              message: data.message || AUTH_PROMPT_MESSAGE,
+              meta: data.meta || AUTH_PROMPT_META,
+              isError: true,
+            });
+            button.innerHTML = originalLabel;
+            return;
+          }
           if (data.success) {
             updateCartBadge(data.cartCount || 0);
             const product = data.product || {};
