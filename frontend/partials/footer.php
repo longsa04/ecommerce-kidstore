@@ -3,7 +3,12 @@ $prefix = defined('KIDSTORE_FRONT_URL_PREFIX') ? KIDSTORE_FRONT_URL_PREFIX : '';
 $footerCategories = [];
 
 if (function_exists('kidstore_fetch_categories')) {
-    $footerCategories = kidstore_fetch_categories(true);
+    try {
+        $footerCategories = kidstore_fetch_categories(true);
+    } catch (Throwable $exception) {
+        $footerCategories = [];
+    }
+
     $footerCategories = array_values(array_filter(
         $footerCategories,
         static function ($category): bool {
