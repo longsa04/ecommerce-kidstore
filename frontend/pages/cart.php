@@ -117,6 +117,10 @@ $cartTotal = getCartTotal();
         .product-info__details strong {
             font-size: 1rem;
             color: #0f172a;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         .product-info__stock {
             color: #64748b;
@@ -279,24 +283,30 @@ $cartTotal = getCartTotal();
                             <?php foreach ($items as $productId => $item): ?>
                                  <tr data-product-id="<?= (int) $productId ?>" data-stock="<?= isset($item['stock']) ? (int) $item['stock'] : 0 ?>">
                                     <td>
-                                        <div class="product-info__image">
+                                        <div class="product-info">
+                                            <div class="product-info__image">
                                                 <img src="<?= htmlspecialchars($item['image'] ?? '') ?>" alt="<?= htmlspecialchars($item['name']) ?>" loading="lazy">
                                             </div>
+                                            <?php
+                                                $availableStock = isset($item['stock']) ? (int) $item['stock'] : 0;
+                                                $stockClass = 'product-info__stock';
+                                                if ($availableStock <= 0) {
+                                                    $stockClass .= ' is-out';
+                                                    $stockLabel = 'Currently unavailable';
+                                                } elseif ($availableStock <= 5) {
+                                                    $stockClass .= ' is-low';
+                                                    $stockLabel = 'Only ' . $availableStock . ' left';
+                                                } else {
+                                                    $stockLabel = 'In stock: ' . $availableStock;
+                                                }
+                                            ?>
                                             <div class="product-info__details">
-                                                <strong><?= htmlspecialchars($item['name']) ?></strong>
-                                                <?php
-                                                    $availableStock = isset($item['stock']) ? (int) $item['stock'] : 0;
-                                                    $stockClass = 'product-info__stock';
-                                                    if ($availableStock <= 0) {
-                                                        $stockClass .= ' is-out';
-                                                        $stockLabel = 'Currently unavailable';
-                                                    } elseif ($availableStock <= 5) {
-                                                        $stockClass .= ' is-low';
-                                                        $stockLabel = 'Only ' . $availableStock . ' left';
-                                                    } else {
-                                                        $stockLabel = 'In stock: ' . $availableStock;
-                                                    }
-                                                ?>
+                                                <strong>
+                                                    <?= htmlspecialchars($item['name']) ?>
+                                                    <span class="<?= htmlspecialchars($stockClass) ?>">
+                                                        <?= htmlspecialchars($stockLabel) ?>
+                                                    </span>
+                                                </strong>
                                             </div>
                                         </div>
                                     </td>
