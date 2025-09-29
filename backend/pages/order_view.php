@@ -20,6 +20,12 @@ if (!$order) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!kidstore_csrf_validate($_POST['csrf_token'] ?? null)) {
+        $_SESSION['admin_flash'] = 'Invalid request. Please try again.';
+        header('Location: order_view.php?id=' . $orderId);
+        exit;
+    }
+
     $newStatus = $_POST['status'] ?? $order['status'];
     if (in_array($newStatus, ['pending','processing','shipped','delivered','cancelled'], true)) {
         kidstore_admin_update_order_status($orderId, $newStatus);
@@ -44,6 +50,7 @@ $shipping = $addressStmt->fetch();
 
 $pageTitle = 'Order #' . str_pad((string) $orderId, 5, '0', STR_PAD_LEFT);
 $currentSection = 'orders';
+$csrfToken = kidstore_csrf_token();
 
 include __DIR__ . '/../includes/header.php';
 ?>
@@ -90,6 +97,7 @@ include __DIR__ . '/../includes/header.php';
     </div>
 
     <form method="post" style="margin-bottom:24px;display:flex;gap:12px;align-items:center;">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>" />
         <label for="status">Update status:</label>
         <select id="status" name="status" style="padding:8px 12px;border-radius:10px;border:1px solid #d1d5db;">
             <?php foreach (['pending','processing','shipped','delivered','cancelled'] as $option): ?>
