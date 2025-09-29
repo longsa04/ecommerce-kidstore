@@ -9,6 +9,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/orders.php';
 require_once __DIR__ . '/../includes/admin.php';
+require_once __DIR__ . '/../includes/auth.php';
 if (!defined('KIDSTORE_ADMIN_URL_PREFIX')) {
     // $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
     // $prefix = '';

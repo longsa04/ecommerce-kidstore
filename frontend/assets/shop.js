@@ -20,11 +20,19 @@
     const pageInput = form ? form.querySelector('[data-filter-input="page"]') : null;
     const categoryInput = form ? form.querySelector('[data-filter-input="category"]') : null;
     const availabilityInput = form ? form.querySelector('[data-filter-input="availability"]') : null;
+    const recommendationBanner = root.querySelector('[data-search-recommendation]');
+    const recommendationText = recommendationBanner
+        ? recommendationBanner.querySelector('[data-search-recommendation-text]')
+        : null;
+    const recommendationSubline = recommendationBanner
+        ? recommendationBanner.querySelector('[data-search-recommendation-subline]')
+        : null;
 
     const endpoint = root.dataset.searchEndpoint || '';
     const productUrlBase = root.dataset.productUrl || '';
     const pageUrl = root.dataset.pageUrl || 'shop.php';
 
+    let currentSearchContext = {};
     let config = {};
     const configEl = document.getElementById('shop-config');
     if (configEl) {
@@ -38,6 +46,10 @@
 
     const availabilityLabels = config.availabilityLabels || {};
     const formatter = new Intl.NumberFormat();
+    currentSearchContext = config.searchContext || {};
+    if (currentSearchContext.mode && root.dataset) {
+        root.dataset.searchMode = currentSearchContext.mode;
+    }
 
     function applyOverrides(params, overrides) {
         Object.entries(overrides).forEach(([key, value]) => {
@@ -81,21 +93,29 @@
         feedback.textContent = message || '';
     }
 
-    function formatResultsCount(meta) {
+    function formatResultsCount(meta, context = {}) {
         const total = formatter.format(meta.totalProducts);
+        if (context.mode === 'recommendations') {
+            const label = meta.totalProducts === 1 ? 'curated pick' : 'curated picks';
+            return `<strong>${total}</strong> ${label}`;
+        }
         const label = meta.totalProducts === 1 ? 'product' : 'products';
         return `<strong>${total}</strong> ${label} found`;
     }
 
-    function renderResultsCount(meta) {
+    function renderResultsCount(meta, context = {}) {
         if (!resultsCount) {
             return;
         }
-        resultsCount.innerHTML = formatResultsCount(meta);
+        resultsCount.innerHTML = formatResultsCount(meta, context);
     }
 
-    function renderFeedback(meta) {
+    function renderFeedback(meta, context = {}) {
         if (!feedback) {
+            return;
+        }
+        if (context.mode === 'recommendations') {
+            setFeedback(context.message || context.headline || 'Here are a few picks we think you will love.');
             return;
         }
         if (meta.totalProducts === 0) {
@@ -107,6 +127,38 @@
         const rangeText = `${formatter.format(start)} – ${formatter.format(end)}`;
         const totalText = formatter.format(meta.totalProducts);
         setFeedback(`Showing ${rangeText} of ${totalText} items`);
+    }
+
+    function updateRecommendation(context = {}) {
+        if (!recommendationBanner) {
+            return;
+        }
+        const mode = context.mode || 'matches';
+        if (mode !== 'recommendations') {
+            recommendationBanner.hidden = true;
+            if (recommendationText) {
+                recommendationText.textContent = '';
+            }
+            if (recommendationSubline) {
+                recommendationSubline.textContent = '';
+                recommendationSubline.hidden = true;
+            }
+            return;
+        }
+
+        recommendationBanner.hidden = false;
+        if (recommendationText) {
+            recommendationText.textContent = context.headline || 'We picked these for you.';
+        }
+        if (recommendationSubline) {
+            if (context.subline) {
+                recommendationSubline.textContent = context.subline;
+                recommendationSubline.hidden = false;
+            } else {
+                recommendationSubline.textContent = '';
+                recommendationSubline.hidden = true;
+            }
+        }
     }
 
     function createBadgeElement(text, modifier) {
@@ -347,19 +399,26 @@
     }
 
     function applyResponse(data, { updateHistory: shouldUpdateHistory = true } = {}) {
-        const { products, meta, filters, hero } = data;
+        const { products, meta, filters, hero, searchContext = {} } = data;
         const productList = Array.isArray(products) ? products : [];
+        currentSearchContext = searchContext || {};
         setFormValues(filters, meta);
         renderProducts(productList);
         renderEmptyState(productList.length > 0);
         renderPagination(meta);
-        renderResultsCount(meta);
-        renderFeedback(meta);
+        renderResultsCount(meta, currentSearchContext);
+        renderFeedback(meta, currentSearchContext);
         renderFilterPills(filters);
         updateHero(hero || {});
+        updateRecommendation(currentSearchContext);
         root.dataset.currentPage = String(meta.page);
         root.dataset.totalPages = String(meta.totalPages);
         root.dataset.totalProducts = String(meta.totalProducts);
+        if (currentSearchContext.mode) {
+            root.dataset.searchMode = currentSearchContext.mode;
+        } else {
+            delete root.dataset.searchMode;
+        }
         if (shouldUpdateHistory) {
             updateHistory(meta);
         }
@@ -417,6 +476,8 @@
             timer = setTimeout(() => fn.apply(this, args), delay);
         };
     }
+
+    updateRecommendation(currentSearchContext);
 
     const debouncedSearch = debounce(() => {
         requestUpdate({ search: searchInput ? searchInput.value : '', page: 1 });
