@@ -55,6 +55,16 @@ $csrfToken = kidstore_csrf_token();
 include __DIR__ . '/../includes/header.php';
 ?>
 
+<div class="page-toolbar">
+    <a class="button secondary" href="<?php echo $prefix; ?>pages/orders.php" onclick="if (window.history.length > 1) { window.history.back(); return false; } return true;">
+        <i class="fas fa-arrow-left"></i> Back to Orders
+    </a>
+    <div class="order-meta">
+        <span class="order-status status-<?= htmlspecialchars($order['status']) ?>">Status: <?= htmlspecialchars(ucfirst($order['status'])) ?></span>
+        <span class="order-id">Order #<?= str_pad((string) $orderId, 5, '0', STR_PAD_LEFT) ?></span>
+    </div>
+</div>
+
 <?php if (!empty($flashMessage)): ?>
     <div class="admin-card" style="background:#dcfce7;color:#166534;">
         <?= htmlspecialchars($flashMessage) ?>
@@ -62,17 +72,29 @@ include __DIR__ . '/../includes/header.php';
 <?php endif; ?>
 
 <div class="admin-card">
-    <h3>Order Details</h3>
-    <p>Placed on <?= date('F j, Y 	 g:i A', strtotime((string) $order['created_at'])) ?></p>
+    <div class="card-header">
+        <div>
+            <h3>Order Details</h3>
+            <p>Placed on <?= date('F j, Y g:i A', strtotime((string) $order['created_at'])) ?></p>
+        </div>
+        <div class="card-actions">
+            <a class="button secondary" href="mailto:<?= htmlspecialchars($order['customer_email']) ?>">
+                <i class="fas fa-envelope"></i> Email customer
+            </a>
+            <button class="button secondary" type="button" onclick="window.print()">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+    </div>
 
-    <div style="display:grid;gap:18px;margin:24px 0;grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
-        <div style="background:#f8fafc;padding:16px;border-radius:12px;">
+    <div class="order-columns">
+        <div class="order-panel">
             <h4>Customer</h4>
             <p><?= htmlspecialchars($order['customer_name']) ?><br />
                <?= htmlspecialchars($order['customer_email']) ?><br />
                <?= htmlspecialchars($order['customer_phone'] ?? 'N/A') ?></p>
         </div>
-        <div style="background:#f8fafc;padding:16px;border-radius:12px;">
+        <div class="order-panel">
             <h4>Payment</h4>
             <?php if (!empty($order['payment'])): ?>
                 <p>Method: <?= htmlspecialchars($order['payment']['payment_method']) ?><br />
@@ -82,7 +104,7 @@ include __DIR__ . '/../includes/header.php';
                 <p>No payment record.</p>
             <?php endif; ?>
         </div>
-        <div style="background:#f8fafc;padding:16px;border-radius:12px;">
+        <div class="order-panel">
             <h4>Shipping</h4>
             <?php if ($shipping): ?>
                 <p><?= htmlspecialchars($shipping['recipient_name']) ?><br />
@@ -96,10 +118,10 @@ include __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <form method="post" style="margin-bottom:24px;display:flex;gap:12px;align-items:center;">
+    <form method="post" class="form-inline">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>" />
         <label for="status">Update status:</label>
-        <select id="status" name="status" style="padding:8px 12px;border-radius:10px;border:1px solid #d1d5db;">
+        <select id="status" name="status" class="input-control">
             <?php foreach (['pending','processing','shipped','delivered','cancelled'] as $option): ?>
                 <option value="<?= $option ?>" <?= $order['status'] === $option ? 'selected' : '' ?>><?= ucfirst($option) ?></option>
             <?php endforeach; ?>
