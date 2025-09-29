@@ -49,8 +49,34 @@ function kidstore_prepare_product_query(array $filters = []): array
     }
 
     if (!empty($filters['search'])) {
-        $sql .= ' AND (p.product_name LIKE :search OR p.description LIKE :search)';
-        $params['search'] = '%' . $filters['search'] . '%';
+        $searchTerm = trim((string) $filters['search']);
+        if ($searchTerm !== '') {
+            $fullKey = 'search_full';
+            $params[$fullKey] = '%' . $searchTerm . '%';
+            $phraseCondition = '('
+                . 'p.product_name LIKE :' . $fullKey
+                . ' OR p.description LIKE :' . $fullKey
+                . ' OR c.category_name LIKE :' . $fullKey
+                . ')';
+
+            $tokens = preg_split('/[\s,]+/u', $searchTerm, -1, PREG_SPLIT_NO_EMPTY);
+            if (is_array($tokens) && count($tokens) > 1) {
+                $tokenConditions = [];
+                foreach ($tokens as $index => $token) {
+                    $paramKey = 'search_token_' . $index;
+                    $params[$paramKey] = '%' . $token . '%';
+                    $tokenConditions[] = '('
+                        . 'p.product_name LIKE :' . $paramKey
+                        . ' OR p.description LIKE :' . $paramKey
+                        . ' OR c.category_name LIKE :' . $paramKey
+                        . ')';
+                }
+
+                $sql .= ' AND (' . $phraseCondition . ' OR (' . implode(' AND ', $tokenConditions) . '))';
+            } else {
+                $sql .= ' AND ' . $phraseCondition;
+            }
+        }
     }
 
     if (isset($filters['status']) && $filters['status'] !== '') {
@@ -183,43 +209,90 @@ function kidstore_truncate_text(string $text, int $limit = 130): string
 
 
 function kidstore_product_image(?string $imageUrl, string $basePrefix = ''): string
-
 {
-
     if (!empty($imageUrl)) {
-
         if (preg_match('~^(?:https?:)?//~i', $imageUrl)) {
-
             return $imageUrl;
-
         }
-
-
 
         if ($basePrefix === '') {
-
             if (defined('KIDSTORE_FRONT_URL_PREFIX')) {
-
                 $basePrefix = KIDSTORE_FRONT_URL_PREFIX;
-
             } elseif (defined('KIDSTORE_ADMIN_URL_PREFIX')) {
-
                 $basePrefix = KIDSTORE_ADMIN_URL_PREFIX;
-
             }
-
         }
 
-
-
         return $basePrefix . ltrim($imageUrl, '/');
-
     }
 
-
-
     return 'https://images.pexels.com/photos/45982/pexels-photo-45982.jpeg?auto=compress&cs=tinysrgb&w=600';
+}
 
+function kidstore_normalize_search_string(string $value): string
+{
+    $trimmed = trim($value);
+    if ($trimmed === '') {
+        return '';
+    }
+
+    if (function_exists('mb_strtolower')) {
+        return mb_strtolower($trimmed, 'UTF-8');
+    }
+
+    return strtolower($trimmed);
+}
+
+/**
+ * Attempt to find a category that loosely matches a shopper's search phrase.
+ *
+ * @param array<int, array<string, mixed>> $categories
+ */
+function kidstore_guess_category_from_search(array $categories, string $searchTerm): ?array
+{
+    $normalizedSearch = kidstore_normalize_search_string($searchTerm);
+    if ($normalizedSearch === '') {
+        return null;
+    }
+
+    foreach ($categories as $category) {
+        $name = (string) ($category['category_name'] ?? '');
+        if ($name === '') {
+            continue;
+        }
+        $normalizedName = kidstore_normalize_search_string($name);
+        if ($normalizedName === '') {
+            continue;
+        }
+        if (strpos($normalizedName, $normalizedSearch) !== false) {
+            return $category;
+        }
+    }
+
+    $tokens = preg_split('/[\s,]+/u', $searchTerm, -1, PREG_SPLIT_NO_EMPTY);
+    if (!is_array($tokens)) {
+        return null;
+    }
+
+    foreach ($tokens as $token) {
+        $normalizedToken = kidstore_normalize_search_string($token);
+        $length = function_exists('mb_strlen') ? mb_strlen($normalizedToken, 'UTF-8') : strlen($normalizedToken);
+        if ($normalizedToken === '' || $length < 3) {
+            continue;
+        }
+        foreach ($categories as $category) {
+            $name = (string) ($category['category_name'] ?? '');
+            if ($name === '') {
+                continue;
+            }
+            $normalizedName = kidstore_normalize_search_string($name);
+            if ($normalizedName !== '' && strpos($normalizedName, $normalizedToken) !== false) {
+                return $category;
+            }
+        }
+    }
+
+    return null;
 }
 
 

@@ -44,6 +44,18 @@ try {
     $countFilters = $filters;
     unset($countFilters['limit'], $countFilters['offset'], $countFilters['sort']);
 
+    $categories = kidstore_fetch_categories(true);
+    $categoryMap = [];
+    foreach ($categories as $category) {
+        $categoryMap[(int) $category['category_id']] = $category['category_name'];
+    }
+
+    $defaultSubtitle = 'Choose from curated outfits and essentials made for giggles, play, and special memories.';
+    $heroTitle = $categoryId && isset($categoryMap[$categoryId])
+        ? $categoryMap[$categoryId]
+        : 'Shop Our Collection';
+    $heroSubtitle = $defaultSubtitle;
+
     $totalProducts = kidstore_count_products($countFilters);
     $totalPages = max(1, (int) ceil($totalProducts / $perPage));
 
@@ -52,28 +64,56 @@ try {
         $filters['offset'] = ($page - 1) * $perPage;
     }
 
-    $products = kidstore_fetch_products($filters);
+    $searchContext = [
+        'mode' => 'matches',
+        'headline' => '',
+        'subline' => '',
+        'message' => '',
+    ];
 
-    $categories = kidstore_fetch_categories(true);
-    $categoryMap = [];
-    foreach ($categories as $category) {
-        $categoryMap[(int) $category['category_id']] = $category['category_name'];
+    if ($searchTerm !== '' && $totalProducts === 0) {
+        $searchContext['mode'] = 'recommendations';
+        $recommendationFilters = [
+            'activeOnly' => true,
+            'limit' => $perPage,
+            'sort' => 'newest',
+        ];
+
+        $matchedCategory = kidstore_guess_category_from_search($categories, $searchTerm);
+        if ($matchedCategory) {
+            $recommendationFilters['category_id'] = (int) $matchedCategory['category_id'];
+            $categoryName = (string) $matchedCategory['category_name'];
+            $searchContext['headline'] = sprintf('No exact matches for “%s”. Showing favorites from %s instead.', $searchTerm, $categoryName);
+            $searchContext['subline'] = 'Try adjusting your filters or browse another collection for even more ideas.';
+            $searchContext['message'] = sprintf('Showing highlights from the %s collection.', $categoryName);
+            $heroTitle = $categoryName;
+            $heroSubtitle = sprintf('We pulled highlights from the %s collection for you.', $categoryName);
+        } else {
+            $searchContext['headline'] = sprintf('We couldn’t find “%s”. Here are some of our newest arrivals.', $searchTerm);
+            $searchContext['subline'] = 'Refine your search or explore a different collection to discover more gems.';
+            $searchContext['message'] = 'Showing a curated batch of fresh arrivals.';
+            $heroTitle = 'Fresh Picks for You';
+            $heroSubtitle = 'These new arrivals are catching eyes right now.';
+        }
+
+        $products = kidstore_fetch_products($recommendationFilters);
+        $totalProducts = count($products);
+        $totalPages = 1;
+        $page = 1;
+    } else {
+        $products = kidstore_fetch_products($filters);
     }
 
-    $heroTitle = $categoryId && isset($categoryMap[$categoryId])
-        ? $categoryMap[$categoryId]
-        : 'Shop Our Collection';
-
-    $defaultSubtitle = 'Choose from curated outfits and essentials made for giggles, play, and special memories.';
-    $heroSubtitle = $defaultSubtitle;
-    if ($searchTerm !== '') {
-        $heroSubtitle = sprintf('Showing results for “%s”.', $searchTerm);
-    } elseif ($categoryId && isset($categoryMap[$categoryId])) {
-        $heroSubtitle = sprintf('Curated picks from the %s collection.', $categoryMap[$categoryId]);
-    } elseif ($availability === 'in_stock') {
-        $heroSubtitle = 'Everything here is in stock and ready for adventures right away.';
-    } elseif ($availability === 'out_of_stock') {
-        $heroSubtitle = 'These favorites are currently on our restock radar—check back soon!';
+    if ($searchContext['mode'] !== 'recommendations') {
+        if ($searchTerm !== '') {
+            $heroSubtitle = sprintf('Showing results for “%s”.', $searchTerm);
+        } elseif ($categoryId && isset($categoryMap[$categoryId])) {
+            $heroSubtitle = sprintf('Curated picks from the %s collection.', $categoryMap[$categoryId]);
+        } elseif ($availability === 'in_stock') {
+            $heroSubtitle = 'Everything here is in stock and ready for adventures right away.';
+        } elseif ($availability === 'out_of_stock') {
+            $heroSubtitle = 'These favorites are currently on our restock radar—check back soon!';
+        }
     }
 
     $prefix = KIDSTORE_FRONT_URL_PREFIX;
@@ -126,6 +166,7 @@ try {
             'title' => $heroTitle,
             'subtitle' => $heroSubtitle,
         ],
+        'searchContext' => $searchContext,
     ];
 
     echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

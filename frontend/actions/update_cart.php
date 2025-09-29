@@ -25,9 +25,15 @@ if (!kidstore_frontend_csrf_validate($csrfToken)) {
 $action = $payload['action'] ?? null;
 $productId = isset($payload['productId']) ? (int) $payload['productId'] : null;
 
-if ($action === null || $productId === null) {
+if ($action === null) {
     http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Missing action or product identifier']);
+    echo json_encode(['success' => false, 'message' => 'Missing action type']);
+    exit;
+}
+
+if (in_array($action, ['update', 'remove'], true) && $productId === null) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Missing product identifier']);
     exit;
 }
 

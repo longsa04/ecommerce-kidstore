@@ -18,5 +18,5 @@ function kidstore_admin_require_login(): void
 
 function kidstore_admin_logout(): void
 {
-    unset($_SESSION['admin_id'], $_SESSION['admin_name']);
+    kidstore_logout();
 }

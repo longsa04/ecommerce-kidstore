@@ -155,7 +155,55 @@ $shopConfig = [
     ],
 ];
 
+$searchResultMode = 'matches';
+$searchRecommendationHeadline = '';
+$searchRecommendationSubline = '';
+$searchRecommendationMessage = '';
+
 $hasProducts = !empty($products);
+
+if ($searchTerm !== '' && !$hasProducts) {
+    $searchResultMode = 'recommendations';
+    $matchedCategory = kidstore_guess_category_from_search($categories, $searchTerm) ?? null;
+
+    $recommendationFilters = [
+        'activeOnly' => true,
+        'sort' => 'newest',
+        'limit' => $perPage,
+    ];
+
+    if ($matchedCategory) {
+        $recommendationFilters['category_id'] = (int) $matchedCategory['category_id'];
+    }
+
+    $products = kidstore_fetch_products($recommendationFilters);
+    $totalProducts = count($products);
+    $totalPages = 1;
+    $page = 1;
+    $hasProducts = !empty($products);
+
+    if ($matchedCategory) {
+        $categoryName = (string) $matchedCategory['category_name'];
+        $searchRecommendationHeadline = sprintf('No exact matches for “%s”. Try these %s favorites instead.', $searchTerm, $categoryName);
+        $searchRecommendationSubline = 'Looking for something else? Adjust your search or browse all categories below.';
+        $searchRecommendationMessage = sprintf('Showing handpicked highlights from the %s collection.', $categoryName);
+        $heroTitle = $categoryName;
+        $heroSubtitle = sprintf('We pulled highlights from the %s collection for you.', $categoryName);
+    } else {
+        $searchRecommendationHeadline = sprintf('We couldn’t find “%s”. Here are some of our newest arrivals you might love.', $searchTerm);
+        $searchRecommendationSubline = 'Looking for something else? Try refining your search or explore a featured collection.';
+        $searchRecommendationMessage = 'Showing a curated batch of fresh arrivals.';
+        $heroTitle = 'Fresh Picks for You';
+        $heroSubtitle = 'These new arrivals are catching eyes right now.';
+    }
+}
+
+$shopConfig['searchContext'] = [
+    'mode' => $searchResultMode,
+    'headline' => $searchRecommendationHeadline,
+    'subline' => $searchRecommendationSubline,
+    'message' => $searchRecommendationMessage,
+];
 
 function kidstore_query_params(array $overrides = []): string
 {
@@ -239,7 +287,8 @@ function kidstore_query_params(array $overrides = []): string
                  data-page-url="<?= htmlspecialchars($prefix . 'pages/shop.php') ?>"
                  data-current-page="<?= (int) $page ?>"
                  data-total-pages="<?= (int) $totalPages ?>"
-                 data-total-products="<?= (int) $totalProducts ?>">
+                 data-total-products="<?= (int) $totalProducts ?>"
+                 data-search-mode="<?= htmlspecialchars($searchResultMode) ?>">
                 <aside class="shop-sidebar">
                     <div class="filter-section">
                         <h3>Categories</h3>
@@ -296,7 +345,11 @@ function kidstore_query_params(array $overrides = []): string
                             </form>
                             <div class="shop-controls__actions">
                                 <p class="results-count" data-results-count aria-live="polite">
-                                    <strong><?= (int) $totalProducts ?></strong> product<?= $totalProducts === 1 ? '' : 's' ?> found
+                                    <?php if ($searchResultMode === 'recommendations'): ?>
+                                        <strong><?= (int) $totalProducts ?></strong> curated pick<?= $totalProducts === 1 ? '' : 's' ?>
+                                    <?php else: ?>
+                                        <strong><?= (int) $totalProducts ?></strong> product<?= $totalProducts === 1 ? '' : 's' ?> found
+                                    <?php endif; ?>
                                 </p>
                                 <a class="clear-filters" href="shop.php" data-clear-filters>
                                     <i class="fas fa-rotate"></i>
@@ -322,7 +375,23 @@ function kidstore_query_params(array $overrides = []): string
                         </div>
                     </div>
 
-                    <div class="shop-feedback" data-feedback aria-live="polite"></div>
+                    <div class="shop-feedback" data-feedback aria-live="polite">
+                        <?= htmlspecialchars($searchResultMode === 'recommendations' ? $searchRecommendationMessage : '') ?>
+                    </div>
+
+                    <div class="shop-recommendation" data-search-recommendation <?= $searchResultMode === 'recommendations' ? '' : 'hidden' ?>>
+                        <div class="shop-recommendation__icon" aria-hidden="true">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <div class="shop-recommendation__copy">
+                            <strong data-search-recommendation-text>
+                                <?= htmlspecialchars($searchRecommendationHeadline !== '' ? $searchRecommendationHeadline : 'We picked these for you.') ?>
+                            </strong>
+                            <p data-search-recommendation-subline <?= $searchRecommendationSubline === '' ? 'hidden' : '' ?>>
+                                <?= htmlspecialchars($searchRecommendationSubline !== '' ? $searchRecommendationSubline : 'Browse the featured collections below or try another search to narrow things down.') ?>
+                            </p>
+                        </div>
+                    </div>
 
                     <div class="shop-loader" data-shop-loader hidden>
                         <?php for ($i = 0; $i < 6; $i++): ?>

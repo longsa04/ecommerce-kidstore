@@ -63,6 +63,7 @@ function kidstore_logout(): void
 {
     unset($_SESSION['user']);
     unset($_SESSION['admin_id'], $_SESSION['admin_name']);
+    unset($_SESSION['cart']);
 
     // Regenerate after logout to invalidate the previous identifier.
     if (session_status() === PHP_SESSION_ACTIVE) {
