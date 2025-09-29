@@ -80,9 +80,19 @@ try {
 
     header('Location: ../pages/order_confirmation.php?order_id=' . $order['order_id']);
     exit;
+} catch (RuntimeException $e) {
+    error_log('Checkout error: ' . $e->getMessage());
+    if ($e->getCode() === KIDSTORE_CUSTOMER_EMAIL_CONFLICT) {
+        $_SESSION['checkout_error'] = $e->getMessage();
+    } else {
+        $_SESSION['checkout_error'] = 'We could not complete your order: ' . $e->getMessage();
+    }
+    $_SESSION['checkout_form_data'] = $fields;
+    header('Location: ../pages/checkout.php');
+    exit;
 } catch (Throwable $e) {
     error_log('Checkout error: ' . $e->getMessage());
-    $_SESSION['checkout_error'] = 'We could not complete your order: ' . $e->getMessage();
+    $_SESSION['checkout_error'] = 'We could not complete your order. Please try again.';
     $_SESSION['checkout_form_data'] = $fields;
     header('Location: ../pages/checkout.php');
     exit;
