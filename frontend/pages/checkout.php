@@ -32,6 +32,7 @@ $asiaCountries = [
     ['code' => 'AE', 'name' => 'United Arab Emirates', 'dial_code' => '+971', 'placeholder' => '+971 50 123 4567', 'example' => '+971 50 123 4567', 'pattern' => '^\\+971\\s?[0-9]{2}\\s?[0-9]{3}\\s?[0-9]{4}$'],
     ['code' => 'SA', 'name' => 'Saudi Arabia', 'dial_code' => '+966', 'placeholder' => '+966 50 123 4567', 'example' => '+966 50 123 4567', 'pattern' => '^\\+966\\s?[0-9]{2}\\s?[0-9]{3}\\s?[0-9]{4}$'],
     ['code' => 'QA', 'name' => 'Qatar', 'dial_code' => '+974', 'placeholder' => '+974 3312 3456', 'example' => '+974 3312 3456', 'pattern' => '^\\+974\\s?[0-9]{4}\\s?[0-9]{4}$'],
+    ['code' => 'KH', 'name' => 'Cambodia', 'dial_code' => '+855', 'placeholder' => '+855 12 345 678', 'example' => '+855 12 345 678', 'pattern' => '^\\+855\\s?[0-9]{2,3}[\\s-]?[0-9]{3}[\\s-]?[0-9]{3}$'],
 ];
 
 $selectedCountry = trim((string) ($formData['country'] ?? ''));

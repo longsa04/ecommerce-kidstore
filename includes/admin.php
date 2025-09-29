@@ -7,6 +7,9 @@ require_once __DIR__ . '/orders.php';
 
 const KIDSTORE_ADMIN_PRODUCT_MAX_PRICE = 100000;
 const KIDSTORE_ADMIN_PRODUCT_MAX_STOCK = 1000000;
+const KIDSTORE_ADMIN_CATEGORY_NAME_MAX_LENGTH = 50;
+const KIDSTORE_ADMIN_CATEGORY_DESCRIPTION_MAX_LENGTH = 1000;
+
 
 function kidstore_admin_collect_product_validation_errors(array $data): array
 {
@@ -42,6 +45,36 @@ function kidstore_admin_collect_product_validation_errors(array $data): array
 
     return $errors;
 }
+
+/**
+ * Validate incoming category payloads before persistence.
+ */
+function kidstore_admin_collect_category_validation_errors(array $data): array
+{
+    $errors = [];
+
+    $name = trim((string)($data['category_name'] ?? ''));
+    if ($name === '') {
+        $errors[] = 'Category name is required.';
+    } else {
+        $length = function_exists('mb_strlen') ? mb_strlen($name) : strlen($name);
+        if ($length > KIDSTORE_ADMIN_CATEGORY_NAME_MAX_LENGTH) {
+            $errors[] = 'Category name cannot exceed ' . KIDSTORE_ADMIN_CATEGORY_NAME_MAX_LENGTH . ' characters.';
+        }
+    }
+
+    $description = trim((string)($data['description'] ?? ''));
+    if ($description !== '') {
+        $length = function_exists('mb_strlen') ? mb_strlen($description) : strlen($description);
+        if ($length > KIDSTORE_ADMIN_CATEGORY_DESCRIPTION_MAX_LENGTH) {
+            $errors[] = 'Description cannot exceed ' . KIDSTORE_ADMIN_CATEGORY_DESCRIPTION_MAX_LENGTH . ' characters.';
+        }
+    }
+
+    return $errors;
+}
+
+
 
 function kidstore_admin_fetch_products(array $filters = []): array
 {
@@ -185,6 +218,11 @@ function kidstore_admin_fetch_category(int $categoryId): ?array
 
 function kidstore_admin_create_category(array $data): int
 {
+    $errors = kidstore_admin_collect_category_validation_errors($data);
+    if ($errors) {
+        throw new InvalidArgumentException(implode("\n", $errors));
+    }
+
     $pdo = kidstore_get_pdo();
     $stmt = $pdo->prepare('INSERT INTO tbl_categories (category_name, description, is_active, created_at, updated_at) VALUES (:name, :description, :is_active, NOW(), NOW())');
     $stmt->execute([
@@ -198,6 +236,11 @@ function kidstore_admin_create_category(array $data): int
 
 function kidstore_admin_update_category(int $categoryId, array $data): void
 {
+    $errors = kidstore_admin_collect_category_validation_errors($data);
+    if ($errors) {
+        throw new InvalidArgumentException(implode("\n", $errors));
+    }
+
     $pdo = kidstore_get_pdo();
     $stmt = $pdo->prepare('UPDATE tbl_categories SET category_name = :name, description = :description, is_active = :is_active, updated_at = NOW() WHERE category_id = :category_id');
     $stmt->execute([

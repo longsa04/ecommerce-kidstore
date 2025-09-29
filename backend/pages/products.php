@@ -75,7 +75,7 @@ include __DIR__ . '/../includes/header.php';
                             <form method="post" action="<?php echo $prefix; ?>pages/product_delete.php" data-confirm="Archive this product?" style="margin:0;">
                                 <input type="hidden" name="product_id" value="<?= (int) $product['product_id'] ?>" />
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>" />
-                                <button type="submit" class="button danger" style="padding:6px 12px;">Archive</button>
+                                <button type="submit" class="button danger" style="padding:6px 12px;">Delete</button>
                             </form>
                         </td>
                     </tr>
