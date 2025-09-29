@@ -1,5 +1,19 @@
 <?php
 $prefix = defined('KIDSTORE_FRONT_URL_PREFIX') ? KIDSTORE_FRONT_URL_PREFIX : '';
+$footerCategories = [];
+
+if (function_exists('kidstore_fetch_categories')) {
+    $footerCategories = kidstore_fetch_categories(true);
+    $footerCategories = array_values(array_filter(
+        $footerCategories,
+        static function ($category): bool {
+            $categoryId = isset($category['category_id']) ? (int) $category['category_id'] : 0;
+            $categoryName = isset($category['category_name']) ? (string) $category['category_name'] : '';
+
+            return $categoryId > 0 && $categoryName !== '';
+        }
+    ));
+}
 ?>
 <footer class="footer">
     <div class="container">
@@ -27,12 +41,27 @@ $prefix = defined('KIDSTORE_FRONT_URL_PREFIX') ? KIDSTORE_FRONT_URL_PREFIX : '';
             
             <div class="footer-section">
                 <h4>Categories</h4>
-                <ul>
-                    <li><a href="<?php echo $prefix; ?>pages/shop.php?category=boys">Boys</a></li>
-                    <li><a href="<?php echo $prefix; ?>pages/shop.php?category=girls">Girls</a></li>
-                    <li><a href="<?php echo $prefix; ?>pages/shop.php?category=baby">Baby</a></li>
-                    <li><a href="<?php echo $prefix; ?>pages/shop.php?category=accessories">Accessories</a></li>
-                </ul>
+                <?php if (!empty($footerCategories)): ?>
+                    <ul>
+                        <?php foreach ($footerCategories as $category): ?>
+                            <?php
+                                $categoryId = (int) ($category['category_id'] ?? 0);
+                                $categoryName = (string) ($category['category_name'] ?? '');
+
+                                if ($categoryId <= 0 || $categoryName === '') {
+                                    continue;
+                                }
+                            ?>
+                            <li>
+                                <a href="<?php echo $prefix; ?>pages/shop.php?category=<?php echo $categoryId; ?>">
+                                    <?php echo htmlspecialchars($categoryName); ?>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php else: ?>
+                    <p class="footer-empty">Categories will appear once they are added.</p>
+                <?php endif; ?>
             </div>
             
             <div class="footer-section">
