@@ -53,7 +53,13 @@ function kidstore_cart_refresh_from_database(): void
 function getCartItems(): array
 {
     kidstore_cart_refresh_from_database();
-    return $_SESSION['cart'];
+    $items = [];
+    foreach ($_SESSION['cart'] as $productId => $item) {
+        $item['image'] = kidstore_product_image($item['image'] ?? null);
+        $items[$productId] = $item;
+    }
+
+    return $items;
 }
 
 function getCartItemCount(): int

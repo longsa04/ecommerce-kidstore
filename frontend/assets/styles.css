@@ -64,9 +64,9 @@ a:focus {
     right: 24px;
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 16px 20px;
-    border-radius: 20px;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 16px;
     background: linear-gradient(135deg, #4caf50, #43a047);
     color: #fff;
     box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
@@ -75,8 +75,8 @@ a:focus {
     pointer-events: none;
     transition: transform 0.3s ease, opacity 0.3s ease;
     z-index: 2000;
-    max-width: 340px;
-    font-size: 0.95rem;
+    max-width: 280px;
+    font-size: 0.9rem;
 }
 
 #notification.show {
@@ -623,7 +623,7 @@ h2 {
 }
 
 .feature p {
-    color: #777;
+    color: #e6e6e6;
 }
 
 /* Shop Page Specific Styles */
@@ -640,7 +640,7 @@ h2 {
 
 .shop-hero p {
     font-size: 1.1rem;
-    color: #666;
+    color: #dddcdc;
 }
 
 .shop-layout {
