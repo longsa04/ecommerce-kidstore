@@ -9,11 +9,19 @@ kidstore_admin_require_login();
 $pageTitle = 'Orders';
 $currentSection = 'orders';
 $status = $_GET['status'] ?? '';
+$search = trim((string)($_GET['q'] ?? ''));
+
 $filters = [];
 if ($status !== '') {
     $filters['status'] = $status;
 }
+if ($search !== '') {
+    $filters['search'] = $search;
+}
+
 $orders = kidstore_admin_fetch_orders($filters);
+$orderBreakdown = kidstore_admin_order_status_breakdown();
+$totalOrders = array_sum($orderBreakdown);
 
 $flash = $_SESSION['admin_flash'] ?? null;
 unset($_SESSION['admin_flash']);
@@ -28,18 +36,46 @@ include __DIR__ . '/../includes/header.php';
 <?php endif; ?>
 
 <div class="admin-card">
-    <div class="admin-header" style="margin-bottom:16px;">
-        <h3>Order List</h3>
-        <form method="get" style="display:flex;gap:10px;align-items:center;">
-            <select name="status" style="padding:8px 12px;border-radius:10px;border:1px solid #d1d5db;">
-                <option value="">All Statuses</option>
-                <?php foreach (['pending','processing','shipped','delivered','cancelled'] as $option): ?>
-                    <option value="<?= $option ?>" <?= $status === $option ? 'selected' : '' ?>><?= ucfirst($option) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button class="button secondary" type="submit">Filter</button>
-        </form>
+    <div class="card-header">
+        <div>
+            <h3>Order health</h3>
+            <p class="card-subtitle"><?= number_format($totalOrders) ?> total orders across all statuses</p>
+        </div>
     </div>
+    <div class="status-grid">
+        <?php foreach ($orderBreakdown as $label => $count): ?>
+            <div class="status-card">
+                <span class="status-dot status-<?= htmlspecialchars($label) ?>"></span>
+                <div>
+                    <strong><?= htmlspecialchars(ucfirst($label)) ?></strong>
+                    <span><?= number_format($count) ?> orders</span>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="card-header">
+        <div>
+            <h3>Order list</h3>
+            <p class="card-subtitle">Search by customer or order number</p>
+        </div>
+    </div>
+    <form method="get" class="form-inline" style="margin-bottom:16px;">
+        <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Search customer or order #" class="input-control" />
+        <select name="status" class="input-control">
+            <option value="">All statuses</option>
+            <?php foreach (['pending','processing','shipped','delivered','cancelled'] as $option): ?>
+                <option value="<?= $option ?>" <?= $status === $option ? 'selected' : '' ?>><?= ucfirst($option) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <button class="button secondary" type="submit">Apply</button>
+        <?php if ($status !== '' || $search !== ''): ?>
+            <a href="<?php echo $prefix; ?>pages/orders.php" class="button secondary">Reset</a>
+        <?php endif; ?>
+    </form>
+
     <?php if ($orders): ?>
         <table class="table">
             <thead>
@@ -58,15 +94,18 @@ include __DIR__ . '/../includes/header.php';
                         <td>#<?= str_pad((string) $order['order_id'], 5, '0', STR_PAD_LEFT) ?></td>
                         <td><?= htmlspecialchars($order['customer_name']) ?></td>
                         <td>$<?= number_format((float) $order['total_price'], 2) ?></td>
-                        <td><span class="tag"><?= htmlspecialchars(ucfirst($order['status'])) ?></span></td>
+                        <td><span class="tag status-<?= htmlspecialchars($order['status']) ?>"><?= htmlspecialchars(ucfirst($order['status'])) ?></span></td>
                         <td><?= date('M j, Y', strtotime((string) $order['created_at'])) ?></td>
-                        <td><a href="<?php echo $prefix; ?>pages/order_view.php?id=<?= (int) $order['order_id'] ?>" class="button secondary" style="padding:6px 12px;">View</a></td>
+                        <td><a href="<?php echo $prefix; ?>pages/order_view.php?id=<?= (int) $order['order_id'] ?>" class="button secondary button-compact">View</a></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     <?php else: ?>
-        <p>No orders match the selected filters.</p>
+        <div class="empty-state">
+            <i class="fas fa-search"></i>
+            <p>No orders match the selected filters.</p>
+        </div>
     <?php endif; ?>
 </div>
 

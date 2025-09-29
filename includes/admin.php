@@ -153,6 +153,18 @@ function kidstore_admin_fetch_orders(array $filters = []): array
         $params['status'] = $filters['status'];
     }
 
+    if (!empty($filters['search'])) {
+        $term = trim((string) $filters['search']);
+        if ($term !== '') {
+            $sql .= ' AND ('
+                . 'CAST(o.order_id AS CHAR) LIKE :search_term '
+                . 'OR u.name LIKE :search_term '
+                . 'OR u.email LIKE :search_term'
+                . ')';
+            $params['search_term'] = '%' . $term . '%';
+        }
+    }
+
     $sql .= ' ORDER BY o.created_at DESC';
 
     if (!empty($filters['limit'])) {
@@ -180,17 +192,57 @@ function kidstore_admin_dashboard_metrics(): array
 {
     $pdo = kidstore_get_pdo();
 
-    $totals = $pdo->query('SELECT COUNT(*) AS order_count, COALESCE(SUM(total_price), 0) AS total_sales FROM tbl_orders')->fetch() ?: ['order_count' => 0, 'total_sales' => 0];
-    $products = $pdo->query('SELECT COUNT(*) AS product_count, COALESCE(SUM(stock_quantity), 0) AS items_in_stock FROM tbl_products')->fetch() ?: ['product_count' => 0, 'items_in_stock' => 0];
-    $categories = $pdo->query('SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_total FROM tbl_categories')->fetch() ?: ['total' => 0, 'active_total' => 0];
+    $orderTotals = $pdo->query(
+        'SELECT COUNT(*) AS order_count,
+                COALESCE(SUM(total_price), 0) AS total_sales,
+                SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) AS pending_orders,
+                SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 ELSE 0 END) AS today_orders,
+                COALESCE(SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN total_price ELSE 0 END), 0) AS today_sales
+         FROM tbl_orders'
+    )->fetch() ?: [
+        'order_count' => 0,
+        'total_sales' => 0,
+        'pending_orders' => 0,
+        'today_orders' => 0,
+        'today_sales' => 0,
+    ];
+
+    $products = $pdo->query(
+        'SELECT COUNT(*) AS product_count,
+                COALESCE(SUM(stock_quantity), 0) AS items_in_stock,
+                SUM(CASE WHEN stock_quantity <= 5 THEN 1 ELSE 0 END) AS low_stock
+         FROM tbl_products'
+    )->fetch() ?: [
+        'product_count' => 0,
+        'items_in_stock' => 0,
+        'low_stock' => 0,
+    ];
+
+    $categories = $pdo->query(
+        'SELECT COUNT(*) AS total,
+                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_total
+         FROM tbl_categories'
+    )->fetch() ?: ['total' => 0, 'active_total' => 0];
+
+    $customers = $pdo->query(
+        'SELECT COUNT(*) AS total,
+                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS recent
+         FROM tbl_users WHERE is_admin = 0'
+    )->fetch() ?: ['total' => 0, 'recent' => 0];
 
     return [
-        'order_count' => (int) $totals['order_count'],
-        'total_sales' => (float) $totals['total_sales'],
+        'order_count' => (int) $orderTotals['order_count'],
+        'total_sales' => (float) $orderTotals['total_sales'],
+        'pending_orders' => (int) $orderTotals['pending_orders'],
+        'today_orders' => (int) $orderTotals['today_orders'],
+        'today_sales' => (float) $orderTotals['today_sales'],
         'product_count' => (int) $products['product_count'],
         'items_in_stock' => (int) $products['items_in_stock'],
+        'low_stock' => (int) $products['low_stock'],
         'category_count' => (int) $categories['total'],
         'active_categories' => (int) $categories['active_total'],
+        'customer_count' => (int) $customers['total'],
+        'recent_customers' => (int) $customers['recent'],
     ];
 }
 
@@ -265,5 +317,122 @@ function kidstore_admin_activate_category(int $categoryId): void
     $stmt->execute([
         'category_id' => $categoryId,
     ]);
+}
+
+function kidstore_admin_order_status_breakdown(): array
+{
+    $pdo = kidstore_get_pdo();
+    $stmt = $pdo->query('SELECT status, COUNT(*) AS total FROM tbl_orders GROUP BY status');
+
+    $breakdown = [
+        'pending' => 0,
+        'processing' => 0,
+        'shipped' => 0,
+        'delivered' => 0,
+        'cancelled' => 0,
+    ];
+
+    foreach ($stmt->fetchAll() as $row) {
+        $status = (string) ($row['status'] ?? '');
+        if ($status !== '') {
+            $breakdown[$status] = (int) $row['total'];
+        }
+    }
+
+    return $breakdown;
+}
+
+function kidstore_admin_product_overview(): array
+{
+    $pdo = kidstore_get_pdo();
+    $row = $pdo->query(
+        'SELECT COUNT(*) AS total,
+                SUM(CASE WHEN status = "active" AND is_active = 1 THEN 1 ELSE 0 END) AS active,
+                SUM(CASE WHEN status <> "active" OR is_active = 0 THEN 1 ELSE 0 END) AS inactive,
+                SUM(CASE WHEN stock_quantity <= 5 THEN 1 ELSE 0 END) AS low_stock,
+                SUM(CASE WHEN stock_quantity <= 0 THEN 1 ELSE 0 END) AS out_of_stock
+         FROM tbl_products'
+    )->fetch() ?: [
+        'total' => 0,
+        'active' => 0,
+        'inactive' => 0,
+        'low_stock' => 0,
+        'out_of_stock' => 0,
+    ];
+
+    return [
+        'total' => (int) $row['total'],
+        'active' => (int) $row['active'],
+        'inactive' => (int) $row['inactive'],
+        'low_stock' => (int) $row['low_stock'],
+        'out_of_stock' => (int) $row['out_of_stock'],
+    ];
+}
+
+function kidstore_admin_customer_glance(): array
+{
+    $pdo = kidstore_get_pdo();
+    $row = $pdo->query(
+        'SELECT COUNT(*) AS total,
+                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS new_customers,
+                COALESCE(SUM(total_spent), 0) AS gross_revenue
+         FROM (
+            SELECT u.user_id, u.created_at,
+                   COALESCE(SUM(o.total_price), 0) AS total_spent
+            FROM tbl_users u
+            LEFT JOIN tbl_orders o ON o.user_id = u.user_id
+            WHERE u.is_admin = 0
+            GROUP BY u.user_id, u.created_at
+         ) AS stats'
+    )->fetch() ?: [
+        'total' => 0,
+        'new_customers' => 0,
+        'gross_revenue' => 0,
+    ];
+
+    return [
+        'total' => (int) $row['total'],
+        'new_customers' => (int) $row['new_customers'],
+        'gross_revenue' => (float) $row['gross_revenue'],
+    ];
+}
+
+function kidstore_admin_monthly_sales(int $months = 6): array
+{
+    $months = max(1, $months);
+
+    $end = new DateTimeImmutable('first day of this month');
+    $start = $end->modify('-' . ($months - 1) . ' months');
+
+    $pdo = kidstore_get_pdo();
+    $stmt = $pdo->prepare(
+        'SELECT DATE_FORMAT(created_at, "%Y-%m-01") AS month_key,
+                COALESCE(SUM(total_price), 0) AS total
+         FROM tbl_orders
+         WHERE created_at >= :start_date
+         GROUP BY month_key
+         ORDER BY month_key ASC'
+    );
+    $stmt->execute([
+        'start_date' => $start->format('Y-m-d H:i:s'),
+    ]);
+
+    $results = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $results[(string) $row['month_key']] = (float) $row['total'];
+    }
+
+    $series = [];
+    $period = $start;
+    for ($i = 0; $i < $months; $i++) {
+        $key = $period->format('Y-m-01');
+        $series[] = [
+            'label' => $period->format('M Y'),
+            'total' => $results[$key] ?? 0.0,
+        ];
+        $period = $period->modify('+1 month');
+    }
+
+    return $series;
 }
 
