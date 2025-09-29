@@ -33,6 +33,9 @@ function kidstore_login(string $email, string $password): bool
         return false;
     }
 
+    // Regenerate the session ID upon successful authentication to prevent fixation.
+    session_regenerate_id(true);
+
     $_SESSION['user'] = [
         'user_id' => (int) $user['user_id'],
         'name' => $user['name'],
@@ -60,6 +63,11 @@ function kidstore_logout(): void
 {
     unset($_SESSION['user']);
     unset($_SESSION['admin_id'], $_SESSION['admin_name']);
+
+    // Regenerate after logout to invalidate the previous identifier.
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_regenerate_id(true);
+    }
 }
 
 function kidstore_register(array $data): array
