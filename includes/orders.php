@@ -6,10 +6,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/auth.php';
 
-function kidstore_find_user_by_email(string $email): ?array
+const KIDSTORE_CUSTOMER_EMAIL_CONFLICT = 409;
+
+function kidstore_find_user_by_email(string $email, ?PDO $pdo = null): ?array
 {
-    $pdo = kidstore_get_pdo();
+    $pdo = $pdo ?? kidstore_get_pdo();
     $stmt = $pdo->prepare('SELECT * FROM tbl_users WHERE email = :email LIMIT 1');
     $stmt->execute(['email' => $email]);
     $user = $stmt->fetch();
@@ -17,15 +20,16 @@ function kidstore_find_user_by_email(string $email): ?array
     return $user ?: null;
 }
 
-function kidstore_upsert_customer(array $data): array
+function kidstore_upsert_customer(array $data, ?PDO $pdo = null): array
 {
-    $pdo = kidstore_get_pdo();
+    $pdo = $pdo ?? kidstore_get_pdo();
     $email = strtolower(trim($data['email'] ?? ''));
     if ($email === '') {
         throw new InvalidArgumentException('Email is required for customer records.');
     }
 
-    $user = kidstore_find_user_by_email($email);
+    $user = kidstore_find_user_by_email($email, $pdo);
+    $currentUser = kidstore_current_user();
     $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
     $payload = [
         'name' => trim((string) ($data['name'] ?? 'Guest Customer')),
@@ -35,15 +39,29 @@ function kidstore_upsert_customer(array $data): array
     ];
 
     if ($user) {
+        $userId = (int) $user['user_id'];
+        $currentUserId = (int) ($currentUser['user_id'] ?? 0);
+        if ($currentUserId !== $userId) {
+            throw new RuntimeException(
+                'An account with this email already exists. Please sign in to continue.',
+                KIDSTORE_CUSTOMER_EMAIL_CONFLICT
+            );
+        }
+
         $stmt = $pdo->prepare('UPDATE tbl_users SET name = :name, phone = :phone, address = :address, updated_at = :updated_at WHERE user_id = :user_id');
         $stmt->execute([
             'name' => $payload['name'],
-            'phone' => $payload['phone'] ?: $user['phone'],
-            'address' => $payload['address'] ?: $user['address'],
+            'phone' => $payload['phone'] !== '' ? $payload['phone'] : ($user['phone'] ?? ''),
+            'address' => $payload['address'] !== '' ? $payload['address'] : ($user['address'] ?? ''),
             'updated_at' => $now,
             'user_id' => $user['user_id'],
         ]);
-        return array_merge($user, $payload);
+        return array_merge($user, [
+            'name' => $payload['name'],
+            'phone' => $payload['phone'] !== '' ? $payload['phone'] : ($user['phone'] ?? ''),
+            'address' => $payload['address'] !== '' ? $payload['address'] : ($user['address'] ?? ''),
+            'updated_at' => $now,
+        ]);
     }
 
     $password = password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
