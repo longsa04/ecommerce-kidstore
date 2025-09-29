@@ -22,6 +22,21 @@ if (!kidstore_frontend_csrf_validate($csrfToken)) {
     exit;
 }
 
+
+if (!kidstore_current_user()) {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Please log in or sign up to add items to your cart.',
+        'requiresAuth' => true,
+        'loginUrl' => kidstore_frontend_url('pages/auth/login.php'),
+        'registerUrl' => kidstore_frontend_url('pages/auth/register.php'),
+        'metaMessage' => 'Use the account menu to sign in or create an account, then try again.',
+    ]);
+    exit;
+}
+
+
 if (!isset($payload['productId'])) {
     http_response_code(422);
     echo json_encode(['success' => false, 'message' => 'Missing product identifier']);

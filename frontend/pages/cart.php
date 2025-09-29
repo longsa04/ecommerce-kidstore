@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/bootstrap.php';
 
 $prefix = KIDSTORE_FRONT_URL_PREFIX;
+$currentUser = kidstore_current_user();
+$isGuest = $currentUser === null;
 $items = getCartItems();
 $cartTotal = getCartTotal();
 ?>
@@ -27,6 +29,54 @@ $cartTotal = getCartTotal();
             border-radius: 18px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
             overflow: hidden;
+        }
+
+        .cart-auth-alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin: 0 30px 20px;
+            padding: 18px 24px;
+            border-radius: 14px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+        }
+        .cart-auth-alert i {
+            font-size: 1.5rem;
+            margin-top: 4px;
+        }
+        .cart-auth-alert strong {
+            display: block;
+            font-size: 1.05rem;
+            margin-bottom: 4px;
+        }
+        .cart-auth-alert p {
+            margin: 0 0 10px;
+            color: #b45309;
+        }
+        .cart-auth-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .cart-auth-actions a {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .cart-auth-actions a:first-child {
+            background: linear-gradient(135deg, #f97316, #fb923c);
+            color: #fff;
+        }
+        .cart-auth-actions a:last-child {
+            background: #fff;
+            color: #b45309;
+            border: 1px solid rgba(234, 88, 12, 0.2);
         }
         .cart-header {
             padding: 25px 30px;
