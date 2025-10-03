@@ -60,9 +60,9 @@ try {
     // Store latest address info on user profile for quick reference
     $_SESSION['customer_last_shipping'] = [
         'address_id' => $shippingAddressId,
-        'name' => $fields['name'],
+        'recipient_name' => $fields['name'],
         'phone' => $fields['phone'],
-        'address' => $fields['address'],
+        'address_line' => $fields['address'],
         'city' => $fields['city'],
         'postal_code' => $fields['postal_code'],
         'country' => $fields['country'],
@@ -72,6 +72,7 @@ try {
         'user_id' => $customer['user_id'],
         'items' => $cartItems,
         'payment_method' => $fields['payment_method'],
+        'shipping_address_id' => $shippingAddressId,
     ]);
 
     clearCart();

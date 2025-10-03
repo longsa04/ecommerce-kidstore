@@ -101,7 +101,7 @@ function kidstore_create_shipping_address(int $userId, array $data): int
  * Creates an order, order items, payment record, and adjusts inventory.
  *
  * @param array<string, mixed> $payload
- * @return array{order_id:int,total:float}
+ * @return array{order_id:int,total:float,shipping_address_id:int}
  */
 function kidstore_create_order_with_items(array $payload): array
 {
@@ -117,6 +117,19 @@ function kidstore_create_order_with_items(array $payload): array
     }
 
     $paymentMethod = $payload['payment_method'] ?? 'Cash on Delivery';
+    $shippingAddressId = (int) ($payload['shipping_address_id'] ?? 0);
+    if ($shippingAddressId <= 0) {
+        throw new InvalidArgumentException('A shipping address is required to create an order.');
+    }
+
+    $addressStmt = $pdo->prepare('SELECT address_id FROM tbl_shipping_addresses WHERE address_id = :address_id AND user_id = :user_id LIMIT 1');
+    $addressStmt->execute([
+        'address_id' => $shippingAddressId,
+        'user_id' => $userId,
+    ]);
+    if ($addressStmt->fetchColumn() === false) {
+        throw new RuntimeException('The specified shipping address could not be found for this customer.');
+    }
 
     $pdo->beginTransaction();
     try {
@@ -145,9 +158,10 @@ function kidstore_create_order_with_items(array $payload): array
             ];
         }
 
-        $orderStmt = $pdo->prepare('INSERT INTO tbl_orders (user_id, total_price, status) VALUES (:user_id, :total_price, :status)');
+        $orderStmt = $pdo->prepare('INSERT INTO tbl_orders (user_id, shipping_address_id, total_price, status) VALUES (:user_id, :shipping_address_id, :total_price, :status)');
         $orderStmt->execute([
             'user_id' => $userId,
+            'shipping_address_id' => $shippingAddressId,
             'total_price' => $subtotal,
             'status' => 'pending',
         ]);
@@ -186,6 +200,7 @@ function kidstore_create_order_with_items(array $payload): array
         return [
             'order_id' => $orderId,
             'total' => $subtotal,
+            'shipping_address_id' => $shippingAddressId,
         ];
     } catch (Throwable $e) {
         $pdo->rollBack();
@@ -197,12 +212,50 @@ function kidstore_create_order_with_items(array $payload): array
 function kidstore_fetch_order_summary(int $orderId): ?array
 {
     $pdo = kidstore_get_pdo();
-    $orderStmt = $pdo->prepare('SELECT o.*, u.name AS customer_name, u.email AS customer_email, u.phone AS customer_phone FROM tbl_orders o JOIN tbl_users u ON u.user_id = o.user_id WHERE o.order_id = :order_id LIMIT 1');
+    $orderStmt = $pdo->prepare(
+        'SELECT o.*, '
+        . 'u.name AS customer_name, '
+        . 'u.email AS customer_email, '
+        . 'u.phone AS customer_phone, '
+        . 'sa.recipient_name AS shipping_recipient_name, '
+        . 'sa.phone AS shipping_phone, '
+        . 'sa.address_line AS shipping_address_line, '
+        . 'sa.city AS shipping_city, '
+        . 'sa.postal_code AS shipping_postal_code, '
+        . 'sa.country AS shipping_country '
+        . 'FROM tbl_orders o '
+        . 'JOIN tbl_users u ON u.user_id = o.user_id '
+        . 'LEFT JOIN tbl_shipping_addresses sa ON sa.address_id = o.shipping_address_id '
+        . 'WHERE o.order_id = :order_id LIMIT 1'
+    );
     $orderStmt->execute(['order_id' => $orderId]);
     $order = $orderStmt->fetch();
     if (!$order) {
         return null;
     }
+
+    if (!empty($order['shipping_address_id']) && $order['shipping_recipient_name'] !== null) {
+        $order['shipping'] = [
+            'address_id' => (int) $order['shipping_address_id'],
+            'recipient_name' => $order['shipping_recipient_name'],
+            'phone' => $order['shipping_phone'],
+            'address_line' => $order['shipping_address_line'],
+            'city' => $order['shipping_city'],
+            'postal_code' => $order['shipping_postal_code'],
+            'country' => $order['shipping_country'],
+        ];
+    } else {
+        $order['shipping'] = null;
+    }
+
+    unset(
+        $order['shipping_recipient_name'],
+        $order['shipping_phone'],
+        $order['shipping_address_line'],
+        $order['shipping_city'],
+        $order['shipping_postal_code'],
+        $order['shipping_country']
+    );
 
     $itemsStmt = $pdo->prepare('SELECT oi.*, p.product_name, p.image_url FROM tbl_order_items oi JOIN tbl_products p ON p.product_id = oi.product_id WHERE oi.order_id = :order_id');
     $itemsStmt->execute(['order_id' => $orderId]);
