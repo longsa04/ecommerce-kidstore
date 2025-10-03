@@ -76,20 +76,22 @@ DROP TABLE IF EXISTS `tbl_orders`;
 CREATE TABLE IF NOT EXISTS `tbl_orders` (
   `order_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
+  `shipping_address_id` int DEFAULT NULL,
   `total_price` decimal(10,2) NOT NULL,
   `status` enum('pending','processing','shipped','delivered','cancelled') DEFAULT 'pending',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`order_id`),
-  KEY `user_id` (`user_id`)
+  KEY `user_id` (`user_id`),
+  KEY `shipping_address_id` (`shipping_address_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `tbl_orders`
 --
 
-INSERT INTO `tbl_orders` (`order_id`, `user_id`, `total_price`, `status`, `created_at`, `updated_at`) VALUES
-(1, 2, 49.98, 'pending', '2025-09-26 16:34:24', '2025-09-26 16:34:24');
+INSERT INTO `tbl_orders` (`order_id`, `user_id`, `shipping_address_id`, `total_price`, `status`, `created_at`, `updated_at`) VALUES
+(1, 2, 1, 49.98, 'pending', '2025-09-26 16:34:24', '2025-09-26 16:34:24');
 
 -- --------------------------------------------------------
 
@@ -274,7 +276,8 @@ ALTER TABLE `tbl_cart_items`
 -- Constraints for table `tbl_orders`
 --
 ALTER TABLE `tbl_orders`
-  ADD CONSTRAINT `tbl_orders_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `tbl_users` (`user_id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `tbl_orders_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `tbl_users` (`user_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `tbl_orders_ibfk_2` FOREIGN KEY (`shipping_address_id`) REFERENCES `tbl_shipping_addresses` (`address_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `tbl_order_items`

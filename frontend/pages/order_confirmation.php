@@ -17,9 +17,11 @@ if (!$order) {
 }
 
 
-$shipping = $_SESSION['customer_last_shipping'] ?? null;
+$sessionShipping = $_SESSION['customer_last_shipping'] ?? null;
 $total = $_SESSION['last_order_total'] ?? $order['total_price'] ?? 0;
 unset($_SESSION['customer_last_shipping'], $_SESSION['last_order_total']);
+
+$shipping = $order['shipping'] ?? $sessionShipping;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -136,8 +138,8 @@ unset($_SESSION['customer_last_shipping'], $_SESSION['last_order_total']);
                 <?php if ($shipping): ?>
                     <div class="address-box">
                         <strong>Shipping to:</strong><br />
-                        <?= htmlspecialchars($shipping['name']) ?><br />
-                        <?= htmlspecialchars($shipping['address']) ?><br />
+                        <?= htmlspecialchars($shipping['recipient_name']) ?><br />
+                        <?= htmlspecialchars($shipping['address_line']) ?><br />
                         <?= htmlspecialchars($shipping['city']) ?>, <?= htmlspecialchars($shipping['postal_code']) ?><br />
                         <?= htmlspecialchars($shipping['country']) ?><br />
                         Phone: <?= htmlspecialchars($shipping['phone']) ?>

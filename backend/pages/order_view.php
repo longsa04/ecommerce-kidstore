@@ -43,10 +43,7 @@ if (isset($_SESSION['admin_flash'])) {
     $flashMessage = null;
 }
 
-$pdo = kidstore_get_pdo();
-$addressStmt = $pdo->prepare('SELECT * FROM tbl_shipping_addresses WHERE user_id = :user_id ORDER BY address_id DESC LIMIT 1');
-$addressStmt->execute(['user_id' => $order['user_id']]);
-$shipping = $addressStmt->fetch();
+$shipping = $order['shipping'] ?? null;
 
 $pageTitle = 'Order #' . str_pad((string) $orderId, 5, '0', STR_PAD_LEFT);
 $currentSection = 'orders';
