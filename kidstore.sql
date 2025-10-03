@@ -256,8 +256,8 @@ CREATE TABLE IF NOT EXISTS `tbl_users` (
 
 INSERT INTO `tbl_users` (`user_id`, `name`, `email`, `password`, `phone`, `address`, `is_admin`, `created_at`, `updated_at`) VALUES
 (1, 'Admin', 'admin@example.com', '$2y$10$QAt/fxdzQjyVBgTfIizB4eVBHomKFoMAzlWRQ7Bmhrd.KIdH1OwaS', NULL, NULL, 1, '2025-09-26 13:11:43', '2025-09-26 16:42:15'),
-(2, 'John Doe', 'john@example.com', '482c811da5d5b4bc6d497ffa98491e38', '012345678', '123 Main St, Phnom Penh', 0, '2025-09-26 16:34:11', '2025-09-26 16:34:11'),
-(3, 'Sokun Phean', 'sokun@example.com', '482c811da5d5b4bc6d497ffa98491e38', '098765432', '45 Street, Siem Reap', 0, '2025-09-26 16:34:11', '2025-09-26 16:34:11');
+(2, 'John Doe', 'john@example.com', '$2y$12$cbJsNDee6nk579PkaghLl.c4EqFg5pKiJYCVXGdX.m/fvf.kihOUy', '012345678', '123 Main St, Phnom Penh', 0, '2025-09-26 16:34:11', '2025-09-26 16:34:11'),
+(3, 'Sokun Phean', 'sokun@example.com', '$2y$12$PHsozNeq3z4n2hC3wBh0a.ZSortQ9oXcAvXlkFjRGzgf3fULVD4ta', '098765432', '45 Street, Siem Reap', 0, '2025-09-26 16:34:11', '2025-09-26 16:34:11');
 
 --
 -- Constraints for dumped tables

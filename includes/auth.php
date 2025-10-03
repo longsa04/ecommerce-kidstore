@@ -29,7 +29,29 @@ function kidstore_login(string $email, string $password): bool
     $stmt->execute(['email' => $email]);
     $user = $stmt->fetch();
 
-    if (!$user || !password_verify($password, $user['password'])) {
+    if (!$user) {
+        return false;
+    }
+
+    $storedHash = (string) $user['password'];
+    $isLegacyMd5 = preg_match('/^[a-f0-9]{32}$/i', $storedHash) === 1;
+
+    if ($isLegacyMd5) {
+        $expected = md5($password);
+        if (!hash_equals($storedHash, $expected)) {
+            return false;
+        }
+
+        $newHash = password_hash($password, PASSWORD_DEFAULT);
+        $rehash = $pdo->prepare('UPDATE tbl_users SET password = :password WHERE user_id = :user_id');
+        $rehash->execute([
+            'password' => $newHash,
+            'user_id' => $user['user_id'],
+        ]);
+
+        $storedHash = $newHash;
+        $isLegacyMd5 = false;
+    } elseif (!password_verify($password, $storedHash)) {
         return false;
     }
 
@@ -48,7 +70,7 @@ function kidstore_login(string $email, string $password): bool
         $_SESSION['admin_name'] = $user['name'];
     }
 
-    if (password_needs_rehash($user['password'], PASSWORD_DEFAULT)) {
+    if (!$isLegacyMd5 && password_needs_rehash($storedHash, PASSWORD_DEFAULT)) {
         $rehash = $pdo->prepare('UPDATE tbl_users SET password = :password WHERE user_id = :user_id');
         $rehash->execute([
             'password' => password_hash($password, PASSWORD_DEFAULT),
