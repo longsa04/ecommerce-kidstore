@@ -4,55 +4,12 @@
  */
 declare(strict_types=1);
 
-require_once __DIR__ . '/../config/env.php';
-
-if (!defined('ABA_PAYWAY_API_URL')) {
-    $apiUrl = trim(kidstore_env('ABA_PAYWAY_API_URL', 'https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase'));
-    if ($apiUrl === '') {
-        throw new RuntimeException('Environment variable "ABA_PAYWAY_API_URL" must not be empty.');
-    }
-
-    define('ABA_PAYWAY_API_URL', $apiUrl);
-}
-
-if (!defined('ABA_PAYWAY_API_KEY')) {
-    $apiKey = trim(kidstore_env('ABA_PAYWAY_API_KEY'));
-    if ($apiKey === '') {
-        throw new RuntimeException('Environment variable "ABA_PAYWAY_API_KEY" must not be empty.');
-    }
-
-    define('ABA_PAYWAY_API_KEY', $apiKey);
-}
-
-if (!defined('ABA_PAYWAY_MERCHANT_ID')) {
-    $merchantId = trim(kidstore_env('ABA_PAYWAY_MERCHANT_ID'));
-    if ($merchantId === '') {
-        throw new RuntimeException('Environment variable "ABA_PAYWAY_MERCHANT_ID" must not be empty.');
-    }
-
-    define('ABA_PAYWAY_MERCHANT_ID', $merchantId);
-}
-
-if (!defined('ABA_PAYWAY_PUBLIC_KEY')) {
-    $publicKey = trim(kidstore_env('ABA_PAYWAY_PUBLIC_KEY', ''));
-    if ($publicKey !== '') {
-        define('ABA_PAYWAY_PUBLIC_KEY', $publicKey);
-    }
-}
-
-if (!defined('ABA_PAYWAY_RSA_PUBLIC_KEY')) {
-    $rsaPublicKey = trim(kidstore_env('ABA_PAYWAY_RSA_PUBLIC_KEY', ''));
-    if ($rsaPublicKey !== '') {
-        define('ABA_PAYWAY_RSA_PUBLIC_KEY', $rsaPublicKey);
-    }
-}
-
-if (!defined('ABA_PAYWAY_RSA_PRIVATE_KEY')) {
-    $rsaPrivateKey = trim(kidstore_env('ABA_PAYWAY_RSA_PRIVATE_KEY', ''));
-    if ($rsaPrivateKey !== '') {
-        define('ABA_PAYWAY_RSA_PRIVATE_KEY', $rsaPrivateKey);
-    }
-}
+define('ABA_PAYWAY_API_URL', 'https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase');
+define('ABA_PAYWAY_API_KEY', 'YOUR_ABA_PAYWAY_API_KEY');
+define('ABA_PAYWAY_MERCHANT_ID', 'YOUR_ABA_PAYWAY_MERCHANT_ID');
+define('ABA_PAYWAY_PUBLIC_KEY', '');
+define('ABA_PAYWAY_RSA_PUBLIC_KEY', '');
+define('ABA_PAYWAY_RSA_PRIVATE_KEY', '');
 
 class PayWayApiCheckout
 {
