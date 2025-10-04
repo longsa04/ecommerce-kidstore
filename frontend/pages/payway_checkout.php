@@ -37,7 +37,15 @@ $firstName = (string) $paywaySession['first_name'];
 $lastName = (string) $paywaySession['last_name'];
 $email = (string) $paywaySession['email'];
 $phone = (string) $paywaySession['phone'];
-$hashInput = $reqTime . ABA_PAYWAY_MERCHANT_ID . $tranId . $amount . $firstName . $lastName . $email . $phone . $returnParams;
+$merchantId = trim((string) ($paywaySession['merchant_id'] ?? ''));
+if ($merchantId === '') {
+    $merchantId = PayWayApiCheckout::getMerchantId();
+}
+$apiUrl = trim((string) ($paywaySession['api_url'] ?? ''));
+if ($apiUrl === '') {
+    $apiUrl = PayWayApiCheckout::getApiUrl();
+}
+$hashInput = $reqTime . $merchantId . $tranId . $amount . $firstName . $lastName . $email . $phone . $returnParams;
 $hash = PayWayApiCheckout::getHash($hashInput);
 $_SESSION['payway_checkout']['hash'] = $hash;
 
@@ -199,7 +207,7 @@ $itemsEncoded = base64_encode($itemsJson);
         </div>
     </section>
 </main>
-<form method="POST" target="aba_webservice" action="<?= htmlspecialchars(PayWayApiCheckout::getApiUrl(), ENT_QUOTES, 'UTF-8'); ?>" id="aba_merchant_request">
+<form method="POST" target="aba_webservice" action="<?= htmlspecialchars($apiUrl, ENT_QUOTES, 'UTF-8'); ?>" id="aba_merchant_request">
     <input type="hidden" name="hash" value="<?= htmlspecialchars($hash, ENT_QUOTES, 'UTF-8'); ?>" />
     <input type="hidden" name="tran_id" value="<?= htmlspecialchars($tranId, ENT_QUOTES, 'UTF-8'); ?>" />
     <input type="hidden" name="amount" value="<?= htmlspecialchars($amount, ENT_QUOTES, 'UTF-8'); ?>" />
@@ -209,7 +217,7 @@ $itemsEncoded = base64_encode($itemsJson);
     <input type="hidden" name="email" value="<?= htmlspecialchars($email, ENT_QUOTES, 'UTF-8'); ?>" />
     <input type="hidden" name="items" value="<?= htmlspecialchars($itemsEncoded, ENT_QUOTES, 'UTF-8'); ?>" />
     <input type="hidden" name="return_params" value='<?= htmlspecialchars($returnParams, ENT_QUOTES, 'UTF-8'); ?>' />
-    <input type="hidden" name="merchant_id" value="<?= htmlspecialchars(ABA_PAYWAY_MERCHANT_ID, ENT_QUOTES, 'UTF-8'); ?>" />
+    <input type="hidden" name="merchant_id" value="<?= htmlspecialchars($merchantId, ENT_QUOTES, 'UTF-8'); ?>" />
     <input type="hidden" name="req_time" value="<?= htmlspecialchars($reqTime, ENT_QUOTES, 'UTF-8'); ?>" />
     <input type="hidden" name="return_url" value="<?= htmlspecialchars($callbackUrl, ENT_QUOTES, 'UTF-8'); ?>" />
 </form>

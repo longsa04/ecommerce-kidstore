@@ -85,17 +85,25 @@ try {
     $formattedAmount = number_format((float) $order['total'], 2, '.', '');
     $transactionId = sprintf('order-%d-%s', (int) $order['order_id'], bin2hex(random_bytes(4)));
     $reqTime = (string) time();
+    $merchantId = PayWayApiCheckout::getMerchantId();
+    $apiUrl = PayWayApiCheckout::getApiUrl();
 
     $returnParams = json_encode([
         'order_id' => (int) $order['order_id'],
         'tran_id' => $transactionId,
+        'merchant_id' => $merchantId,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
     if ($returnParams === false) {
-        $returnParams = sprintf('{"order_id":%d,"tran_id":"%s"}', (int) $order['order_id'], addslashes($transactionId));
+        $returnParams = sprintf(
+            '{"order_id":%d,"tran_id":"%s","merchant_id":"%s"}',
+            (int) $order['order_id'],
+            addslashes($transactionId),
+            addslashes($merchantId)
+        );
     }
 
-    $hashInput = $reqTime . ABA_PAYWAY_MERCHANT_ID . $transactionId . $formattedAmount . $firstName . $lastName . $fields['email'] . $fields['phone'] . $returnParams;
+    $hashInput = $reqTime . $merchantId . $transactionId . $formattedAmount . $firstName . $lastName . $fields['email'] . $fields['phone'] . $returnParams;
     $hash = PayWayApiCheckout::getHash($hashInput);
 
     $_SESSION['payway_checkout'] = [
@@ -109,6 +117,8 @@ try {
         'phone' => $fields['phone'],
         'return_params' => $returnParams,
         'hash' => $hash,
+        'merchant_id' => $merchantId,
+        'api_url' => $apiUrl,
     ];
 
     $_SESSION['payway_pending_order_id'] = (int) $order['order_id'];
