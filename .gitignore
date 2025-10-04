@@ -1,0 +1,6 @@
+# Environment files
+.env
+
+# Local development artifacts
+/vendor/
+/node_modules/

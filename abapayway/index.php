@@ -113,7 +113,7 @@ $_SESSION['payway_checkout'] = [
         <div id="aba_main_modal" class="aba-modal">
             <div class="aba-modal-content">
                 <form method="POST" target="aba_webservice" action="<?= htmlspecialchars(PayWayApiCheckout::getApiUrl(), ENT_QUOTES, 'UTF-8'); ?>" id="aba_merchant_request">
-                    <input type="hidden" name="hash" value="<?= htmlspecialchars(PayWayApiCheckout::getHash($reqTime . ABA_PAYWAY_MERCHANT_ID . $transactionId . $formattedAmount . $firstName . $lastName . $customerContact['email'] . $customerContact['phone'] . $returnParams), ENT_QUOTES, 'UTF-8'); ?>" id="hash" />
+                    <input type="hidden" name="hash" value="<?= htmlspecialchars(PayWayApiCheckout::getHash($reqTime . PayWayApiCheckout::getMerchantId() . $transactionId . $formattedAmount . $firstName . $lastName . $customerContact['email'] . $customerContact['phone'] . $returnParams), ENT_QUOTES, 'UTF-8'); ?>" id="hash" />
                     <input type="hidden" name="tran_id" value="<?= htmlspecialchars($transactionId, ENT_QUOTES, 'UTF-8'); ?>" id="tran_id" />
                     <input type="hidden" name="amount" value="<?= htmlspecialchars($formattedAmount, ENT_QUOTES, 'UTF-8'); ?>" id="amount" />
                     <input type="hidden" name="firstname" value="<?= htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'); ?>" />
@@ -122,7 +122,7 @@ $_SESSION['payway_checkout'] = [
                     <input type="hidden" name="email" value="<?= htmlspecialchars($customerContact['email'], ENT_QUOTES, 'UTF-8'); ?>" />
                     <input type="hidden" name="items" value="<?= htmlspecialchars($itemsPayload, ENT_QUOTES, 'UTF-8'); ?>" id="items" />
                     <input type="hidden" name="return_params" value='<?= htmlspecialchars($returnParams, ENT_QUOTES, 'UTF-8'); ?>' />
-                    <input type="hidden" name="merchant_id" value="<?= htmlspecialchars(ABA_PAYWAY_MERCHANT_ID, ENT_QUOTES, 'UTF-8'); ?>" />
+                    <input type="hidden" name="merchant_id" value="<?= htmlspecialchars(PayWayApiCheckout::getMerchantId(), ENT_QUOTES, 'UTF-8'); ?>" />
                     <input type="hidden" name="req_time" value="<?= htmlspecialchars($reqTime, ENT_QUOTES, 'UTF-8'); ?>" />
                 </form>
             </div>
