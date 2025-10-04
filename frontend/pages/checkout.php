@@ -158,7 +158,7 @@ if (!in_array($selectedCountry, $validCountryNames, true)) {
                             <?= htmlspecialchars($error) ?>
                         </div>
                     <?php endif; ?>
-                    <form action="<?php echo $prefix; ?>actions/place_order.php" method="post" class="checkout-form">
+                    <form action="<?php echo $prefix; ?>actions/place_order.php" method="post" class="checkout-form" data-default-action="<?php echo $prefix; ?>actions/place_order.php">
                         <input type="hidden" name="<?= KIDSTORE_FRONTEND_CSRF_FIELD ?>" value="<?= htmlspecialchars(kidstore_frontend_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>" />
                         <div class="form-grid">
                             <div class="form-group">
@@ -212,9 +212,11 @@ if (!in_array($selectedCountry, $validCountryNames, true)) {
                             <div class="form-group">
                                 <label for="payment_method">Payment Method</label>
                                 <select id="payment_method" name="payment_method" required>
-                                    <option value="Cash on Delivery" <?= ($formData['payment_method'] ?? '') === 'Cash on Delivery' ? 'selected' : '' ?>>Cash on Delivery</option>
-                                    <option value="Credit Card" <?= ($formData['payment_method'] ?? '') === 'Credit Card' ? 'selected' : '' ?>>Credit Card (demo)</option>
+                                    <option value="Cash on Delivery" data-action="<?php echo $prefix; ?>actions/place_order.php" <?= ($formData['payment_method'] ?? '') === 'Cash on Delivery' ? 'selected' : '' ?>>Cash on Delivery</option>
+                                    <option value="Credit Card" data-action="<?php echo $prefix; ?>actions/place_order.php" <?= ($formData['payment_method'] ?? '') === 'Credit Card' ? 'selected' : '' ?>>Credit Card (demo)</option>
+                                    <option value="ABA PayWay" data-action="<?php echo $prefix; ?>actions/initiate_abapayway.php" <?= ($formData['payment_method'] ?? '') === 'ABA PayWay' ? 'selected' : '' ?>>ABA PayWay (online)</option>
                                 </select>
+                                <small id="payway-note" style="display:none;color:#2563eb;">You will be redirected to ABA PayWay to securely complete your payment.</small>
                             </div>
                         </div>
                         <button type="submit" class="btn-submit">
@@ -252,6 +254,44 @@ if (!in_array($selectedCountry, $validCountryNames, true)) {
 <script src="<?php echo $prefix; ?>assets/script.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const checkoutForm = document.querySelector('.checkout-form');
+        const paymentSelect = document.getElementById('payment_method');
+        const paywayNote = document.getElementById('payway-note');
+        const submitButton = checkoutForm ? checkoutForm.querySelector('.btn-submit') : null;
+        const defaultAction = checkoutForm ? (checkoutForm.getAttribute('data-default-action') || checkoutForm.getAttribute('action')) : '';
+        if (submitButton && !submitButton.getAttribute('data-default-label')) {
+            submitButton.setAttribute('data-default-label', (submitButton.textContent || '').trim());
+        }
+        if (submitButton && !submitButton.getAttribute('data-payway-label')) {
+            submitButton.setAttribute('data-payway-label', 'Proceed to PayWay');
+        }
+
+        function updatePaymentAction() {
+            if (!checkoutForm || !paymentSelect) {
+                return;
+            }
+            const selectedOption = paymentSelect.options[paymentSelect.selectedIndex];
+            const nextAction = selectedOption && selectedOption.getAttribute('data-action') ? selectedOption.getAttribute('data-action') : defaultAction;
+            if (nextAction) {
+                checkoutForm.setAttribute('action', nextAction);
+            }
+
+            const isPayWay = !!(selectedOption && selectedOption.value === 'ABA PayWay');
+            if (paywayNote) {
+                paywayNote.style.display = isPayWay ? 'block' : 'none';
+            }
+            if (submitButton) {
+                const defaultLabel = submitButton.getAttribute('data-default-label') || (submitButton.textContent || '').trim();
+                const paywayLabel = submitButton.getAttribute('data-payway-label') || 'Proceed to PayWay';
+                submitButton.textContent = isPayWay ? paywayLabel : defaultLabel;
+            }
+        }
+
+        if (paymentSelect) {
+            paymentSelect.addEventListener('change', updatePaymentAction);
+            updatePaymentAction();
+        }
+
         const countrySelect = document.getElementById('country');
         const phoneInput = document.getElementById('phone');
         const hint = document.querySelector('[data-phone-hint]');

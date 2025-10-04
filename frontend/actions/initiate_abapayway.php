@@ -2,11 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/bootstrap.php';
-
-if (isset($_POST['payment_method']) && trim((string) $_POST['payment_method']) === 'ABA PayWay') {
-    require __DIR__ . '/initiate_abapayway.php';
-    exit;
-}
+require_once __DIR__ . '/../../abapayway/PayWayApiCheckout.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: ../pages/checkout.php');
@@ -28,26 +24,26 @@ $fields = [
     'city' => trim((string) ($_POST['city'] ?? '')),
     'postal_code' => trim((string) ($_POST['postal_code'] ?? '')),
     'country' => trim((string) ($_POST['country'] ?? '')),
-    'payment_method' => trim((string) ($_POST['payment_method'] ?? 'Cash on Delivery')),
+    'payment_method' => 'ABA PayWay',
 ];
 
 if (!kidstore_frontend_csrf_validate($_POST[KIDSTORE_FRONTEND_CSRF_FIELD] ?? null)) {
     $_SESSION['checkout_error'] = 'Your session has expired. Please refresh and try again.';
-    $_SESSION['checkout_form_data'] = $fields;
+    $_SESSION['checkout_form_data'] = array_merge($_SESSION['checkout_form_data'] ?? [], $fields);
     header('Location: ../pages/checkout.php');
     exit;
 }
 
 if ($fields['name'] === '' || $fields['email'] === '' || !filter_var($fields['email'], FILTER_VALIDATE_EMAIL)) {
     $_SESSION['checkout_error'] = 'Please provide a valid name and email address.';
-    $_SESSION['checkout_form_data'] = $fields;
+    $_SESSION['checkout_form_data'] = array_merge($_SESSION['checkout_form_data'] ?? [], $fields);
     header('Location: ../pages/checkout.php');
     exit;
 }
 
 if ($fields['phone'] === '' || $fields['address'] === '' || $fields['city'] === '' || $fields['postal_code'] === '' || $fields['country'] === '') {
     $_SESSION['checkout_error'] = 'Please fill in all required shipping details.';
-    $_SESSION['checkout_form_data'] = $fields;
+    $_SESSION['checkout_form_data'] = array_merge($_SESSION['checkout_form_data'] ?? [], $fields);
     header('Location: ../pages/checkout.php');
     exit;
 }
@@ -62,7 +58,7 @@ try {
         'postal_code' => $fields['postal_code'],
         'country' => $fields['country'],
     ]);
-    // Store latest address info on user profile for quick reference
+
     $_SESSION['customer_last_shipping'] = [
         'address_id' => $shippingAddressId,
         'recipient_name' => $fields['name'],
@@ -76,30 +72,60 @@ try {
     $order = kidstore_create_order_with_items([
         'user_id' => $customer['user_id'],
         'items' => $cartItems,
-        'payment_method' => $fields['payment_method'],
+        'payment_method' => 'ABA PayWay',
         'shipping_address_id' => $shippingAddressId,
     ]);
 
-    clearCart();
-    $_SESSION['last_order_total'] = $order['total'];
-    unset($_SESSION['checkout_form_data']);
+    kidstore_update_payment_outcome((int) $order['order_id'], 'pending');
 
-    header('Location: ../pages/order_confirmation.php?order_id=' . $order['order_id']);
+    $nameParts = preg_split('/\s+/u', $fields['name'], -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    $firstName = array_shift($nameParts) ?? 'Guest';
+    $lastName = $nameParts ? implode(' ', $nameParts) : 'Customer';
+
+    $formattedAmount = number_format((float) $order['total'], 2, '.', '');
+    $transactionId = sprintf('order-%d-%s', (int) $order['order_id'], bin2hex(random_bytes(4)));
+    $reqTime = (string) time();
+
+    $returnParams = json_encode([
+        'order_id' => (int) $order['order_id'],
+        'tran_id' => $transactionId,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    if ($returnParams === false) {
+        $returnParams = sprintf('{"order_id":%d,"tran_id":"%s"}', (int) $order['order_id'], addslashes($transactionId));
+    }
+
+    $hashInput = $reqTime . ABA_PAYWAY_MERCHANT_ID . $transactionId . $formattedAmount . $firstName . $lastName . $fields['email'] . $fields['phone'] . $returnParams;
+    $hash = PayWayApiCheckout::getHash($hashInput);
+
+    $_SESSION['payway_checkout'] = [
+        'order_id' => (int) $order['order_id'],
+        'tran_id' => $transactionId,
+        'amount' => $formattedAmount,
+        'req_time' => $reqTime,
+        'first_name' => $firstName,
+        'last_name' => $lastName,
+        'email' => $fields['email'],
+        'phone' => $fields['phone'],
+        'return_params' => $returnParams,
+        'hash' => $hash,
+    ];
+
+    $_SESSION['payway_pending_order_id'] = (int) $order['order_id'];
+    $_SESSION['checkout_form_data'] = array_merge($_SESSION['checkout_form_data'] ?? [], $fields);
+
+    header('Location: ' . kidstore_frontend_url('pages/payway_checkout.php'));
     exit;
 } catch (RuntimeException $e) {
-    error_log('Checkout error: ' . $e->getMessage());
-    if ($e->getCode() === KIDSTORE_CUSTOMER_EMAIL_CONFLICT) {
-        $_SESSION['checkout_error'] = $e->getMessage();
-    } else {
-        $_SESSION['checkout_error'] = 'We could not complete your order: ' . $e->getMessage();
-    }
-    $_SESSION['checkout_form_data'] = $fields;
+    error_log('PayWay initiation error: ' . $e->getMessage());
+    $_SESSION['checkout_error'] = $e->getMessage();
+    $_SESSION['checkout_form_data'] = array_merge($_SESSION['checkout_form_data'] ?? [], $fields);
     header('Location: ../pages/checkout.php');
     exit;
 } catch (Throwable $e) {
-    error_log('Checkout error: ' . $e->getMessage());
-    $_SESSION['checkout_error'] = 'We could not complete your order. Please try again.';
-    $_SESSION['checkout_form_data'] = $fields;
+    error_log('PayWay initiation error: ' . $e->getMessage());
+    $_SESSION['checkout_error'] = 'We could not start the PayWay payment. Please try again.';
+    $_SESSION['checkout_form_data'] = array_merge($_SESSION['checkout_form_data'] ?? [], $fields);
     header('Location: ../pages/checkout.php');
     exit;
 }
