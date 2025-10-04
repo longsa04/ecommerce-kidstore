@@ -209,6 +209,105 @@ function kidstore_create_order_with_items(array $payload): array
 }
 
 
+/**
+ * Update order and payment records after an external payment flow completes.
+ * Restores inventory if the payment ultimately fails.
+ */
+function kidstore_update_payment_outcome(int $orderId, string $paymentStatus): void
+{
+    $paymentStatus = strtolower($paymentStatus);
+    if (!in_array($paymentStatus, ['pending', 'completed', 'failed'], true)) {
+        throw new InvalidArgumentException('Unsupported payment status supplied.');
+    }
+
+    $pdo = kidstore_get_pdo();
+    $pdo->beginTransaction();
+
+    try {
+        $orderStmt = $pdo->prepare('SELECT status FROM tbl_orders WHERE order_id = :order_id LIMIT 1');
+        $orderStmt->execute(['order_id' => $orderId]);
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$order) {
+            throw new RuntimeException('Order not found for payment update.');
+        }
+
+        $currentStatus = (string) ($order['status'] ?? 'pending');
+        $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        if ($paymentStatus === 'completed') {
+            $paymentUpdate = $pdo->prepare(
+                'UPDATE tbl_payments SET payment_status = :status, paid_at = :paid_at WHERE order_id = :order_id'
+            );
+            $paymentUpdate->execute([
+                'status' => 'completed',
+                'paid_at' => $now,
+                'order_id' => $orderId,
+            ]);
+
+            if ($currentStatus !== 'processing') {
+                $orderUpdate = $pdo->prepare('UPDATE tbl_orders SET status = :status WHERE order_id = :order_id');
+                $orderUpdate->execute([
+                    'status' => 'processing',
+                    'order_id' => $orderId,
+                ]);
+            }
+        } elseif ($paymentStatus === 'failed') {
+            $paymentUpdate = $pdo->prepare(
+                'UPDATE tbl_payments SET payment_status = :status, paid_at = NULL WHERE order_id = :order_id'
+            );
+            $paymentUpdate->execute([
+                'status' => 'failed',
+                'order_id' => $orderId,
+            ]);
+
+            if ($currentStatus !== 'cancelled') {
+                $itemsStmt = $pdo->prepare('SELECT product_id, quantity FROM tbl_order_items WHERE order_id = :order_id');
+                $itemsStmt->execute(['order_id' => $orderId]);
+                $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                if ($items) {
+                    $stockStmt = $pdo->prepare(
+                        'UPDATE tbl_products SET stock_quantity = stock_quantity + :quantity WHERE product_id = :product_id'
+                    );
+                    foreach ($items as $item) {
+                        $stockStmt->execute([
+                            'product_id' => (int) $item['product_id'],
+                            'quantity' => (int) $item['quantity'],
+                        ]);
+                    }
+                }
+
+                $orderUpdate = $pdo->prepare('UPDATE tbl_orders SET status = :status WHERE order_id = :order_id');
+                $orderUpdate->execute([
+                    'status' => 'cancelled',
+                    'order_id' => $orderId,
+                ]);
+            }
+        } else {
+            $paymentUpdate = $pdo->prepare(
+                'UPDATE tbl_payments SET payment_status = :status, paid_at = NULL WHERE order_id = :order_id'
+            );
+            $paymentUpdate->execute([
+                'status' => 'pending',
+                'order_id' => $orderId,
+            ]);
+
+            if ($currentStatus !== 'pending') {
+                $orderUpdate = $pdo->prepare('UPDATE tbl_orders SET status = :status WHERE order_id = :order_id');
+                $orderUpdate->execute([
+                    'status' => 'pending',
+                    'order_id' => $orderId,
+                ]);
+            }
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+}
+
 function kidstore_fetch_order_summary(int $orderId): ?array
 {
     $pdo = kidstore_get_pdo();
